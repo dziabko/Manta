@@ -633,7 +633,6 @@ pub mod pallet {
 	/// Play the role of the session manager.
 	impl<T: Config> SessionManager<T::AccountId> for Pallet<T> {
 		fn new_session(index: SessionIndex) -> Option<Vec<T::AccountId>> {
-			// Crunch collator performance of the ending session
 			log::info!(
 				"assembling new collators for new session {} at #{:?}",
 				index,
