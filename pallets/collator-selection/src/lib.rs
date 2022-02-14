@@ -95,6 +95,7 @@ pub mod pallet {
 	};
 	use frame_system::{pallet_prelude::*, Config as SystemConfig};
 	use pallet_session::SessionManager;
+	use sp_arithmetic::Percent;
 	use sp_staking::SessionIndex;
 
 	type BalanceOf<T> =
@@ -141,10 +142,10 @@ pub mod pallet {
 		type MaxInvulnerables: Get<u32>;
 
 		// n-th Percentile of lowest-performing collators to be checked for kicking
-		type PerformancePercentileToConsiderForKick: Get<u8>;
+		type PerformancePercentileToConsiderForKick: Get<Percent>;
 
 		// If a collator underperforms the percentile by more than this, it'll be kicked
-		type UnderperformPercentileByPercentToKick: Get<u8>;
+		type UnderperformPercentileByPercentToKick: Get<Percent>;
 
 		/// A stable ID for a validator.
 		type ValidatorId: Member
@@ -249,11 +250,11 @@ pub mod pallet {
 				"genesis desired_candidates are more than T::MaxCandidates",
 			);
 			assert!(
-				T::PerformancePercentileToConsiderForKick::get() <= 100,
+				T::PerformancePercentileToConsiderForKick::get() <= Percent::one(),
 				"Percentile must be given as number between 0 and 100",
 			);
 			assert!(
-				T::UnderperformPercentileByPercentToKick::get() <= 100,
+				T::UnderperformPercentileByPercentToKick::get() <= Percent::one(),
 				"Kicking threshold must be given as number between 0 and 100",
 			);
 			<DesiredCandidates<T>>::put(&self.desired_candidates);
@@ -517,7 +518,6 @@ pub mod pallet {
 		pub fn kick_stale_candidates(
 			candidates: Vec<CandidateInfo<T::AccountId, BalanceOf<T>>>,
 		) -> Option<Vec<T::AccountId>> {
-			use sp_arithmetic::Percent;
 			use sp_runtime::PerThing;
 
 			// 0. Storage reads and precondition checks
@@ -525,12 +525,12 @@ pub mod pallet {
 				return None; // No candidates means we're running invulnerables only
 			}
 			let percentile_for_kick = T::PerformancePercentileToConsiderForKick::get();
-			if percentile_for_kick == 0 {
+			if percentile_for_kick == Percent::zero() {
 				return None; // Selecting 0-th percentile disables kicking. Upper bound check in fn build()
 			}
 			let underperformance_threshold_percent =
 				T::UnderperformPercentileByPercentToKick::get();
-			if underperformance_threshold_percent == 100 {
+			if underperformance_threshold_percent == Percent::one() {
 				return None; // tolerating 100% underperformance disables kicking
 			}
 			let mut collator_perf_this_session =
@@ -544,7 +544,7 @@ pub mod pallet {
 			let collator_count = collator_perf_this_session.len();
 
 			// 2. get percentile by _exclusive_ nearest rank method https://en.wikipedia.org/wiki/Percentile#The_nearest-rank_method (rust percentile API is feature gated and unstable)
-			let ordinal_rank = Percent::from_percent(percentile_for_kick).mul_ceil(collator_count);
+			let ordinal_rank = percentile_for_kick.mul_ceil(collator_count);
 			let index_at_ordinal_rank = ordinal_rank.saturating_sub(1); // -1 to accomodate 0-index counting, should not saturate due to precondition check and round up multiplication
 
 			// 3. Block number at rank is the percentile and our kick performance benchmark
@@ -552,12 +552,11 @@ pub mod pallet {
 				collator_perf_this_session[index_at_ordinal_rank].1;
 
 			// 4. We kick if a collator produced UnderperformPercentileByPercentToKick fewer blocks than the percentile
-			let threshold_factor =
-				Percent::from_percent(underperformance_threshold_percent).left_from_one(); // bounded to [0,1] due to checks on underperformance_threshold_percent
+			let threshold_factor = underperformance_threshold_percent.left_from_one(); // bounded to [0,1] due to checks on underperformance_threshold_percent
 			let kick_threshold =
 				(threshold_factor.mul_floor(blocks_created_at_percentile)) as BlockCount;
 			log::info!(
-				"Session Performance stats: {}-th percentile: {:?} blocks. Evicting collators who produced less than {} blocks",
+				"Session Performance stats: {:?}-th percentile: {:?} blocks. Evicting collators who produced less than {} blocks",
 				percentile_for_kick,
 				blocks_created_at_percentile,
 				kick_threshold

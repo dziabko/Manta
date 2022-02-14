@@ -23,6 +23,7 @@ use frame_support::{
 };
 use frame_system as system;
 use frame_system::EnsureSignedBy;
+use sp_arithmetic::Percent;
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, UintAuthorityId},
@@ -167,8 +168,8 @@ impl pallet_session::SessionHandler<u64> for TestSessionHandler {
 parameter_types! {
 	pub const Offset: u64 = 0;
 	pub const Period: u64 = 10;
-	pub const PerformancePercentileToConsiderForKick : u8 = 80;
-	pub const UnderperformPercentileByPercentToKick  : u8 = 10;
+	pub const PerformancePercentileToConsiderForKick : Percent = Percent::from_percent(80);
+	pub const UnderperformPercentileByPercentToKick  : Percent = Percent::from_percent(10);
 }
 
 impl pallet_session::Config for Test {

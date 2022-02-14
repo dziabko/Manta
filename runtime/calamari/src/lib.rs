@@ -24,6 +24,7 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use sp_api::impl_runtime_apis;
+use sp_arithmetic::Percent;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
@@ -792,8 +793,8 @@ parameter_types! {
 
 parameter_types! {
 	pub const ExecutiveBody: BodyId = BodyId::Executive;
-	pub const PerformancePercentileToConsiderForKick : u8 = 80;
-	pub const UnderperformPercentileByPercentToKick  : u8 = 10;
+	pub const PerformancePercentileToConsiderForKick : Percent = Percent::from_percent(80);
+	pub const UnderperformPercentileByPercentToKick  : Percent = Percent::from_percent(10);
 }
 
 /// We allow root and the Relay Chain council to execute privileged collator selection operations.
