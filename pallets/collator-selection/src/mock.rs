@@ -226,8 +226,6 @@ impl Config for Test {
 	type PotId = PotId;
 	type MaxCandidates = MaxCandidates;
 	type MaxInvulnerables = MaxInvulnerables;
-	type PerformancePercentileToConsiderForKick = PerformancePercentileToConsiderForKick;
-	type UnderperformPercentileByPercentToKick = UnderperformPercentileByPercentToKick;
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
 	type ValidatorIdOf = IdentityCollator;
 	type AccountIdOf = IdentityCollator;
@@ -260,6 +258,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	let collator_selection = collator_selection::GenesisConfig::<Test> {
 		desired_candidates: 2,
 		candidacy_bond: 10,
+		eviction_percentile: Percent::from_percent(80),
+		eviction_threshold: Percent::from_percent(10),
 		invulnerables,
 	};
 	let session = pallet_session::GenesisConfig::<Test> { keys };

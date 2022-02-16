@@ -141,12 +141,6 @@ pub mod pallet {
 		/// Used only for benchmarking.
 		type MaxInvulnerables: Get<u32>;
 
-		// n-th Percentile of lowest-performing collators to be checked for kicking
-		type PerformancePercentileToConsiderForKick: Get<Percent>;
-
-		// If a collator underperforms the percentile by more than this, it'll be kicked
-		type UnderperformPercentileByPercentToKick: Get<Percent>;
-
 		/// A stable ID for a validator.
 		type ValidatorId: Member
 			+ Parameter
@@ -200,6 +194,17 @@ pub mod pallet {
 	pub(super) type BlocksPerCollatorThisSession<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, BlockCount, ValueQuery, StartingBlockCount>;
 
+	/// The two configurable parameters
+	#[pallet::storage]
+	#[pallet::getter(fn eviction_percentile)]
+	pub type PerformancePercentileToConsiderForKick<T: Config> =
+		StorageValue<_, Percent, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn eviction_threshold)]
+	pub type UnderperformPercentileByPercentToKick<T: Config> =
+		StorageValue<_, Percent, ValueQuery>;
+
 	/// Desired number of candidates.
 	///
 	/// This should ideally always be less than [`Config::MaxCandidates`] for weights to be correct.
@@ -216,6 +221,8 @@ pub mod pallet {
 	pub struct GenesisConfig<T: Config> {
 		pub invulnerables: Vec<T::AccountId>,
 		pub candidacy_bond: BalanceOf<T>,
+		pub eviction_percentile: Percent,
+		pub eviction_threshold: Percent,
 		pub desired_candidates: u32,
 	}
 
@@ -225,6 +232,8 @@ pub mod pallet {
 			Self {
 				invulnerables: Default::default(),
 				candidacy_bond: Default::default(),
+				eviction_percentile: Percent::zero(), // Note: eviction disabled by default
+				eviction_threshold: Percent::one(),   // Note: eviction disabled by default
 				desired_candidates: Default::default(),
 			}
 		}
@@ -251,15 +260,17 @@ pub mod pallet {
 				"genesis desired_candidates are more than T::MaxCandidates",
 			);
 			assert!(
-				T::PerformancePercentileToConsiderForKick::get() <= Percent::one(),
+				self.eviction_percentile <= Percent::one(),
 				"Percentile must be given as number between 0 and 100",
 			);
 			assert!(
-				T::UnderperformPercentileByPercentToKick::get() <= Percent::one(),
+				self.eviction_threshold <= Percent::one(),
 				"Kicking threshold must be given as number between 0 and 100",
 			);
 			<DesiredCandidates<T>>::put(&self.desired_candidates);
 			<CandidacyBond<T>>::put(&self.candidacy_bond);
+			<PerformancePercentileToConsiderForKick<T>>::put(&self.eviction_percentile);
+			<UnderperformPercentileByPercentToKick<T>>::put(&self.eviction_threshold);
 			<Invulnerables<T>>::put(&self.invulnerables);
 		}
 	}
@@ -270,6 +281,8 @@ pub mod pallet {
 		NewInvulnerables(Vec<T::AccountId>),
 		NewDesiredCandidates(u32),
 		NewCandidacyBond(BalanceOf<T>),
+		NewEvictionPercentile(u8),
+		NewEvictionThreshold(u8),
 		CandidateAdded(T::AccountId, BalanceOf<T>),
 		CandidateRemoved(T::AccountId),
 	}
@@ -351,6 +364,34 @@ pub mod pallet {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			<CandidacyBond<T>>::put(&bond);
 			Self::deposit_event(Event::NewCandidacyBond(bond));
+			Ok(().into())
+		}
+
+		/// Set the collator performance percentile used as baseline for eviction
+		///
+		/// `percentile`: x-th percentile of collator performance to use as eviction baseline
+		#[pallet::weight(T::WeightInfo::set_eviction_percentile())]
+		pub fn set_eviction_percentile(
+			origin: OriginFor<T>,
+			percentile: u8,
+		) -> DispatchResultWithPostInfo {
+			T::UpdateOrigin::ensure_origin(origin)?;
+			<PerformancePercentileToConsiderForKick<T>>::put(Percent::from_percent(percentile)); // NOTE: from_percent saturates at 100
+			Self::deposit_event(Event::NewEvictionPercentile(percentile));
+			Ok(().into())
+		}
+
+		/// Set the tolerated underperformance percentage before evicting
+		///
+		/// `percentage`: x% of missed blocks under eviction_percentile to tolerate
+		#[pallet::weight(T::WeightInfo::set_eviction_threshold())]
+		pub fn set_eviction_threshold(
+			origin: OriginFor<T>,
+			percentage: u8,
+		) -> DispatchResultWithPostInfo {
+			T::UpdateOrigin::ensure_origin(origin)?;
+			<UnderperformPercentileByPercentToKick<T>>::put(Percent::from_percent(percentage)); // NOTE: from_percent saturates at 100
+			Self::deposit_event(Event::NewEvictionThreshold(percentage));
 			Ok(().into())
 		}
 
@@ -525,12 +566,11 @@ pub mod pallet {
 			if candidates.is_empty() {
 				return None; // No candidates means we're running invulnerables only
 			}
-			let percentile_for_kick = T::PerformancePercentileToConsiderForKick::get();
+			let percentile_for_kick = Self::eviction_percentile();
 			if percentile_for_kick == Percent::zero() {
 				return None; // Selecting 0-th percentile disables kicking. Upper bound check in fn build()
 			}
-			let underperformance_threshold_percent =
-				T::UnderperformPercentileByPercentToKick::get();
+			let underperformance_threshold_percent = Self::eviction_threshold();
 			if underperformance_threshold_percent == Percent::one() {
 				return None; // tolerating 100% underperformance disables kicking
 			}

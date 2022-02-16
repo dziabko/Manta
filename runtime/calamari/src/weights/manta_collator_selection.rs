@@ -46,6 +46,8 @@ pub trait WeightInfo {
 	fn set_invulnerables(b: u32, ) -> Weight;
 	fn set_desired_candidates() -> Weight;
 	fn set_candidacy_bond() -> Weight;
+	fn set_eviction_percentile() -> Weight;
+	fn set_eviction_threshold() -> Weight;
 	fn register_as_candidate(c: u32, ) -> Weight;
 	fn leave_intent(c: u32, ) -> Weight;
 	fn remove_collator(c: u32, ) -> Weight;
@@ -73,6 +75,13 @@ impl<T: frame_system::Config> manta_collator_selection::WeightInfo for Substrate
 	fn set_candidacy_bond() -> Weight {
 		(10_523_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
+
+	fn set_eviction_percentile() -> Weight{
+		(0 as Weight)
+	}
+	fn set_eviction_threshold() -> Weight{
+		(0 as Weight) 
 	}
 	// Storage: CollatorSelection Candidates (r:1 w:1)
 	// Storage: CollatorSelection DesiredCandidates (r:1 w:0)
@@ -161,6 +170,12 @@ impl WeightInfo for () {
 	fn set_candidacy_bond() -> Weight {
 		(10_523_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+	}
+	fn set_eviction_percentile() -> Weight{
+		(0 as Weight)
+	}
+	fn set_eviction_threshold() -> Weight{
+		(0 as Weight) 
 	}
 	// Storage: CollatorSelection Candidates (r:1 w:1)
 	// Storage: CollatorSelection DesiredCandidates (r:1 w:0)

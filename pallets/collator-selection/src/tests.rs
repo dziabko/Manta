@@ -21,8 +21,8 @@ use frame_support::{
 	traits::{Currency, GenesisBuild, OnInitialize},
 };
 use pallet_balances::Error as BalancesError;
-use sp_runtime::testing::UintAuthorityId;
-use sp_runtime::traits::BadOrigin;
+use sp_arithmetic::Percent;
+use sp_runtime::{testing::UintAuthorityId, traits::BadOrigin};
 
 #[test]
 fn basic_setup_works() {
@@ -95,6 +95,79 @@ fn set_candidacy_bond() {
 	});
 }
 
+#[test]
+fn set_eviction_percentile() {
+	new_test_ext().execute_with(|| {
+		// given
+		assert_eq!(
+			CollatorSelection::eviction_percentile(),
+			Percent::from_percent(80)
+		);
+
+		// can set
+		assert_ok!(CollatorSelection::set_eviction_percentile(
+			Origin::signed(RootAccount::get()),
+			100
+		));
+		assert_eq!(
+			CollatorSelection::eviction_percentile(),
+			Percent::from_percent(100)
+		);
+
+		// saturates to 100
+		assert_ok!(CollatorSelection::set_eviction_percentile(
+			Origin::signed(RootAccount::get()),
+			101
+		));
+		assert_eq!(
+			CollatorSelection::eviction_percentile(),
+			Percent::from_percent(100)
+		);
+
+		// rejects bad origin.
+		assert_noop!(
+			CollatorSelection::set_eviction_percentile(Origin::signed(1), 8),
+			BadOrigin
+		);
+	});
+}
+
+#[test]
+fn set_eviction_threshold() {
+	new_test_ext().execute_with(|| {
+		// given
+		assert_eq!(
+			CollatorSelection::eviction_threshold(),
+			Percent::from_percent(10)
+		);
+
+		// can set
+		assert_ok!(CollatorSelection::set_eviction_threshold(
+			Origin::signed(RootAccount::get()),
+			5
+		));
+		assert_eq!(
+			CollatorSelection::eviction_threshold(),
+			Percent::from_percent(5)
+		);
+
+		// saturates to 100
+		assert_ok!(CollatorSelection::set_eviction_threshold(
+			Origin::signed(RootAccount::get()),
+			101
+		));
+		assert_eq!(
+			CollatorSelection::eviction_threshold(),
+			Percent::from_percent(100)
+		);
+
+		// rejects bad origin.
+		assert_noop!(
+			CollatorSelection::set_eviction_threshold(Origin::signed(1), 8),
+			BadOrigin
+		);
+	});
+}
 #[test]
 fn cannot_register_candidate_if_too_many() {
 	new_test_ext().execute_with(|| {
@@ -561,6 +634,8 @@ fn cannot_set_genesis_value_twice() {
 
 	let collator_selection = collator_selection::GenesisConfig::<Test> {
 		desired_candidates: 2,
+		eviction_percentile: Percent::from_percent(80),
+		eviction_threshold: Percent::from_percent(10),
 		candidacy_bond: 10,
 		invulnerables,
 	};

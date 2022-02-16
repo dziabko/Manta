@@ -29,6 +29,7 @@ use frame_support::{
 use frame_system::{EventRecord, RawOrigin};
 use pallet_authorship::EventHandler;
 use pallet_session::{self as session, SessionManager};
+use sp_arithmetic::Percent;
 use sp_std::prelude::*;
 
 pub type BalanceOf<T> =
@@ -148,6 +149,30 @@ benchmarks! {
 		assert_last_event::<T>(Event::NewCandidacyBond(bond).into());
 	}
 
+	set_eviction_percentile {
+		let percentile = 80u8;
+		let origin = T::UpdateOrigin::successful_origin();
+	}: {
+		assert_ok!(
+			<CollatorSelection<T>>::set_eviction_percentile(origin, percentile)
+		);
+	}
+	verify {
+		assert_last_event::<T>(Event::NewEvictionPercentile(percentile).into());
+	}
+
+	set_eviction_threshold {
+		let percentage = 10u8;
+		let origin = T::UpdateOrigin::successful_origin();
+	}: {
+		assert_ok!(
+			<CollatorSelection<T>>::set_eviction_threshold(origin, percentage)
+		);
+	}
+	verify {
+		assert_last_event::<T>(Event::NewEvictionThreshold(percentage).into());
+	}
+
 	// worse case is when we have all the max-candidate slots filled except one, and we fill that
 	// one.
 	register_as_candidate {
@@ -264,17 +289,19 @@ benchmarks! {
 	// worst case for new session.
 	new_session {
 		let c in 1 .. T::MaxCandidates::get();
-		let p = T::PerformancePercentileToConsiderForKick::get();
 
 		<CandidacyBond<T>>::put(T::Currency::minimum_balance());
+		<PerformancePercentileToConsiderForKick<T>>::put(Percent::from_percent(100)); // Consider all collators
+		<UnderperformPercentileByPercentToKick<T>>::put(Percent::from_percent(0)); 	  // Kick anyone not at perfect performant
 		<DesiredCandidates<T>>::put(c);
 		frame_system::Pallet::<T>::set_block_number(0u32.into());
 
+		let p = <CollatorSelection<T>>::eviction_percentile();
 		register_validators::<T>(c);
 		register_candidates::<T>(c);
 
-		let new_block = 1800u32;
-		let zero_block = 0u32;
+		let max_blocks = 1800u32;
+		let zero_blocks = 0u32;
 		let candidates = <Candidates<T>>::get();
 
 		// nodes on or above percentile
@@ -282,22 +309,22 @@ benchmarks! {
 		let r = c.saturating_sub(non_removals);
 
 		for i in 0..c {
-			<BlocksPerCollatorThisSession<T>>::insert(candidates[i as usize].who.clone(), zero_block);
+			<BlocksPerCollatorThisSession<T>>::insert(candidates[i as usize].who.clone(), zero_blocks);
 		}
 
 		if non_removals > 0 {
 			for i in 0..non_removals {
-				<BlocksPerCollatorThisSession<T>>::insert(candidates[i as usize].who.clone(), new_block);
+				<BlocksPerCollatorThisSession<T>>::insert(candidates[i as usize].who.clone(), max_blocks);
 			}
 		} else {
 			for i in 0..c {
-				<BlocksPerCollatorThisSession<T>>::insert(candidates[i as usize].who.clone(), new_block);
+				<BlocksPerCollatorThisSession<T>>::insert(candidates[i as usize].who.clone(), max_blocks);
 			}
 		}
 
 		let pre_length = <Candidates<T>>::get().len();
 
-		frame_system::Pallet::<T>::set_block_number(new_block.into());
+		frame_system::Pallet::<T>::set_block_number(max_blocks.into());
 
 		assert!(<Candidates<T>>::get().len() == c as usize);
 	}: {
