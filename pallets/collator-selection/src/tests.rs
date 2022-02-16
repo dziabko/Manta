@@ -25,7 +25,7 @@ use frame_support::{
 };
 use pallet_balances::Error as BalancesError;
 use sp_arithmetic::Percent;
-use sp_runtime::{testing::UintAuthorityId, traits::BadOraigin};
+use sp_runtime::{testing::UintAuthorityId, traits::BadOrigin};
 
 #[test]
 fn basic_setup_works() {
