@@ -449,8 +449,8 @@ fn kick_algorithm_manta() {
 
 		// Test boundary conditions
 		// Kick anyone not at perfect performance
-		<EvictionPercentile<Test>>::put(Percent::from_percent(100));
-		<EvictionThreshold<Test>>::put(Percent::from_percent(0));
+		EvictionPercentile::<Test>::put(Percent::from_percent(100));
+		EvictionThreshold::<Test>::put(Percent::from_percent(0));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
 		BlocksPerCollatorThisSession::<Test>::insert(3u64, 9);
 		BlocksPerCollatorThisSession::<Test>::insert(4u64, 10);
@@ -460,21 +460,21 @@ fn kick_algorithm_manta() {
 		);
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
 		// Allow any underperformance => eviction disabled
-		<EvictionThreshold<Test>>::put(Percent::from_percent(100));
+		EvictionThreshold::<Test>::put(Percent::from_percent(100));
 		assert_eq!(
 			CollatorSelection::kick_stale_candidates(CollatorSelection::candidates()),
 			None
 		);
 		// 0-th percentile = use worst collator as benchmark => eviction disabled
-		<EvictionPercentile<Test>>::put(Percent::from_percent(0));
-		<EvictionThreshold<Test>>::put(Percent::from_percent(0));
+		EvictionPercentile::<Test>::put(Percent::from_percent(0));
+		EvictionThreshold::<Test>::put(Percent::from_percent(0));
 		assert_eq!(
 			CollatorSelection::kick_stale_candidates(CollatorSelection::candidates()),
 			None
 		);
 		// Same performance => no kick
-		<EvictionPercentile<Test>>::put(Percent::from_percent(100));
-		<EvictionThreshold<Test>>::put(Percent::from_percent(0));
+		EvictionPercentile::<Test>::put(Percent::from_percent(100));
+		EvictionThreshold::<Test>::put(Percent::from_percent(0));
 		BlocksPerCollatorThisSession::<Test>::insert(3u64, 10);
 		BlocksPerCollatorThisSession::<Test>::insert(4u64, 10);
 		assert_eq!(
@@ -482,8 +482,8 @@ fn kick_algorithm_manta() {
 			None
 		);
 		// Exactly on threshold => no kick
-		<EvictionPercentile<Test>>::put(Percent::from_percent(100));
-		<EvictionThreshold<Test>>::put(Percent::from_percent(10));
+		EvictionPercentile::<Test>::put(Percent::from_percent(100));
+		EvictionThreshold::<Test>::put(Percent::from_percent(10));
 		BlocksPerCollatorThisSession::<Test>::insert(3u64, 10);
 		BlocksPerCollatorThisSession::<Test>::insert(4u64, 9);
 		assert_eq!(
@@ -491,8 +491,8 @@ fn kick_algorithm_manta() {
 			None
 		);
 		// Rational threshold = 8.1, kick 8 and below
-		<EvictionPercentile<Test>>::put(Percent::from_percent(100));
-		<EvictionThreshold<Test>>::put(Percent::from_percent(10));
+		EvictionPercentile::<Test>::put(Percent::from_percent(100));
+		EvictionThreshold::<Test>::put(Percent::from_percent(10));
 		BlocksPerCollatorThisSession::<Test>::insert(3u64, 8);
 		BlocksPerCollatorThisSession::<Test>::insert(4u64, 10);
 		assert_eq!(
