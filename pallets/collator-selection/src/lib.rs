@@ -194,16 +194,17 @@ pub mod pallet {
 	pub(super) type BlocksPerCollatorThisSession<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, BlockCount, ValueQuery, StartingBlockCount>;
 
-	/// The two configurable parameters
+	/// Performance percentile to use as baseline for collator eviction
 	#[pallet::storage]
 	#[pallet::getter(fn eviction_percentile)]
-	pub type PerformancePercentileToConsiderForKick<T: Config> =
-		StorageValue<_, Percent, ValueQuery>;
+	pub type EvictionPercentile<T: Config> = StorageValue<_, Percent, ValueQuery>;
 
+	/// Percentage of underperformance to _tolerate_ before evicting a collator
+	/// 
+	/// i.e. A collator gets evicted if it produced _less_ than x% fewer blocks than the collator at EvictionPercentile 
 	#[pallet::storage]
 	#[pallet::getter(fn eviction_threshold)]
-	pub type UnderperformPercentileByPercentToKick<T: Config> =
-		StorageValue<_, Percent, ValueQuery>;
+	pub type EvictionThreshold<T: Config> = StorageValue<_, Percent, ValueQuery>;
 
 	/// Desired number of candidates.
 	///
@@ -269,8 +270,8 @@ pub mod pallet {
 			);
 			<DesiredCandidates<T>>::put(&self.desired_candidates);
 			<CandidacyBond<T>>::put(&self.candidacy_bond);
-			<PerformancePercentileToConsiderForKick<T>>::put(&self.eviction_percentile);
-			<UnderperformPercentileByPercentToKick<T>>::put(&self.eviction_threshold);
+			<EvictionPercentile<T>>::put(&self.eviction_percentile);
+			<EvictionThreshold<T>>::put(&self.eviction_threshold);
 			<Invulnerables<T>>::put(&self.invulnerables);
 		}
 	}
@@ -376,7 +377,7 @@ pub mod pallet {
 			percentile: u8,
 		) -> DispatchResultWithPostInfo {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			<PerformancePercentileToConsiderForKick<T>>::put(Percent::from_percent(percentile)); // NOTE: from_percent saturates at 100
+			<EvictionPercentile<T>>::put(Percent::from_percent(percentile)); // NOTE: from_percent saturates at 100
 			Self::deposit_event(Event::NewEvictionPercentile(percentile));
 			Ok(().into())
 		}
@@ -390,7 +391,7 @@ pub mod pallet {
 			percentage: u8,
 		) -> DispatchResultWithPostInfo {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			<UnderperformPercentileByPercentToKick<T>>::put(Percent::from_percent(percentage)); // NOTE: from_percent saturates at 100
+			<EvictionThreshold<T>>::put(Percent::from_percent(percentage)); // NOTE: from_percent saturates at 100
 			Self::deposit_event(Event::NewEvictionThreshold(percentage));
 			Ok(().into())
 		}
@@ -592,7 +593,7 @@ pub mod pallet {
 			let blocks_created_at_percentile: BlockCount =
 				collator_perf_this_session[index_at_ordinal_rank].1;
 
-			// 4. We kick if a collator produced UnderperformPercentileByPercentToKick fewer blocks than the percentile
+			// 4. We kick if a collator produced fewer than (EvictionThreshold * EvictionPercentile rounded up) blocks than the percentile
 			let threshold_factor = underperformance_threshold_percent.left_from_one(); // bounded to [0,1] due to checks on underperformance_threshold_percent
 			let kick_threshold =
 				(threshold_factor.mul_ceil(blocks_created_at_percentile)) as BlockCount;
