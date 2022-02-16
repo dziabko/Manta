@@ -169,8 +169,6 @@ impl pallet_session::SessionHandler<u64> for TestSessionHandler {
 parameter_types! {
 	pub const Offset: u64 = 0;
 	pub const Period: u64 = 10;
-	pub const PerformancePercentileToConsiderForKick : Percent = Percent::from_percent(80);
-	pub const UnderperformPercentileByPercentToKick  : Percent = Percent::from_percent(10);
 }
 
 impl pallet_session::Config for Test {

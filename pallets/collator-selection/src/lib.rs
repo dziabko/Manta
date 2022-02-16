@@ -595,7 +595,7 @@ pub mod pallet {
 			// 4. We kick if a collator produced UnderperformPercentileByPercentToKick fewer blocks than the percentile
 			let threshold_factor = underperformance_threshold_percent.left_from_one(); // bounded to [0,1] due to checks on underperformance_threshold_percent
 			let kick_threshold =
-				(threshold_factor.mul_floor(blocks_created_at_percentile)) as BlockCount;
+				(threshold_factor.mul_ceil(blocks_created_at_percentile)) as BlockCount;
 			log::info!(
 				"Session Performance stats: {:?}-th percentile: {:?} blocks. Evicting collators who produced less than {} blocks",
 				percentile_for_kick,
@@ -607,7 +607,7 @@ pub mod pallet {
 			let mut removed_account_ids: Vec<T::AccountId> = Vec::new();
 			let kick_candidates = &collator_perf_this_session[..index_at_ordinal_rank]; // ordinal-rank exclusive, the collator at percentile is safe
 			kick_candidates.iter().for_each(|(acc_id,my_blocks_this_session)| {
-				if *my_blocks_this_session <= kick_threshold {
+				if *my_blocks_this_session < kick_threshold {
 					// If our validator is not also a candidate we're invulnerable or already kicked
 					if let Some(_) = candidates.iter().find(|&x|{x.who == *acc_id})
 					{
@@ -624,7 +624,11 @@ pub mod pallet {
 					}
 				}
 			});
-			Some(removed_account_ids)
+			if removed_account_ids.is_empty() {
+				None
+			} else {
+				Some(removed_account_ids)
+			}
 		}
 
 		/// Reset the performance map to the currently active validators at 0 blocks

@@ -330,7 +330,12 @@ benchmarks! {
 	}: {
 		<CollatorSelection<T> as SessionManager<_>>::new_session(0)
 	} verify {
-		if c > r {
+		println!("{c} {r} {non_removals} {pre_length} {}",<Candidates<T>>::get().len());
+		BlocksPerCollatorThisSession::<T>::iter().for_each(|tuple| {
+			println!("{:?}", tuple);
+		});
+
+		if c > 1 && r > 0 {
 			assert!(<Candidates<T>>::get().len() < pre_length);
 		} else {
 			assert!(<Candidates<T>>::get().len() == pre_length);

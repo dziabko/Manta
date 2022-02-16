@@ -15,7 +15,10 @@
 // along with Manta.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate as collator_selection;
-use crate::{mock::*, BlocksPerCollatorThisSession, CandidateInfo, Error};
+use crate::{
+	mock::*, BlocksPerCollatorThisSession, CandidateInfo, Error,
+	PerformancePercentileToConsiderForKick, UnderperformPercentileByPercentToKick,
+};
 use frame_support::{
 	assert_noop, assert_ok,
 	traits::{Currency, GenesisBuild, OnInitialize},
@@ -418,7 +421,7 @@ fn kick_algorithm_manta() {
 			vec![]
 		));
 
-		// 80th percentile = 10, kick 9 and below, remove 3,4,5
+		// 80th percentile = 10, kick *below* 9, remove 3,5
 		BlocksPerCollatorThisSession::<Test>::insert(1u64, 10);
 		BlocksPerCollatorThisSession::<Test>::insert(2u64, 10);
 		BlocksPerCollatorThisSession::<Test>::insert(3u64, 4);
@@ -426,15 +429,14 @@ fn kick_algorithm_manta() {
 		BlocksPerCollatorThisSession::<Test>::insert(5u64, 0);
 		assert_eq!(
 			CollatorSelection::kick_stale_candidates(CollatorSelection::candidates()).unwrap(),
-			vec![5, 3, 4]
+			vec![5, 3]
 		);
 
 		// readd them
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
-		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(5)));
 
-		// Don't try kicking invulnerables ( 1 and 2 ), percentile = 9, kick 8 and below
+		// Don't try kicking invulnerables ( 1 and 2 ), percentile = 9, threshold is 8.1 => kick 8 and below
 		BlocksPerCollatorThisSession::<Test>::insert(1u64, 0);
 		BlocksPerCollatorThisSession::<Test>::insert(2u64, 10);
 		BlocksPerCollatorThisSession::<Test>::insert(3u64, 4);
@@ -443,6 +445,59 @@ fn kick_algorithm_manta() {
 		assert_eq!(
 			CollatorSelection::kick_stale_candidates(CollatorSelection::candidates()).unwrap(),
 			vec![5, 3]
+		);
+
+		// Test boundary conditions
+		// Kick anyone not at perfect performance
+		<PerformancePercentileToConsiderForKick<Test>>::put(Percent::from_percent(100));
+		<UnderperformPercentileByPercentToKick<Test>>::put(Percent::from_percent(0));
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
+		BlocksPerCollatorThisSession::<Test>::insert(3u64, 9);
+		BlocksPerCollatorThisSession::<Test>::insert(4u64, 10);
+		assert_eq!(
+			CollatorSelection::kick_stale_candidates(CollatorSelection::candidates()),
+			Some(vec![3])
+		);
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
+		// Allow any underperformance => eviction disabled
+		<UnderperformPercentileByPercentToKick<Test>>::put(Percent::from_percent(100));
+		assert_eq!(
+			CollatorSelection::kick_stale_candidates(CollatorSelection::candidates()),
+			None
+		);
+		// 0-th percentile = use worst collator as benchmark => eviction disabled
+		<PerformancePercentileToConsiderForKick<Test>>::put(Percent::from_percent(0));
+		<UnderperformPercentileByPercentToKick<Test>>::put(Percent::from_percent(0));
+		assert_eq!(
+			CollatorSelection::kick_stale_candidates(CollatorSelection::candidates()),
+			None
+		);
+		// Same performance => no kick
+		<PerformancePercentileToConsiderForKick<Test>>::put(Percent::from_percent(100));
+		<UnderperformPercentileByPercentToKick<Test>>::put(Percent::from_percent(0));
+		BlocksPerCollatorThisSession::<Test>::insert(3u64, 10);
+		BlocksPerCollatorThisSession::<Test>::insert(4u64, 10);
+		assert_eq!(
+			CollatorSelection::kick_stale_candidates(CollatorSelection::candidates()),
+			None
+		);
+		// Exactly on threshold => no kick
+		<PerformancePercentileToConsiderForKick<Test>>::put(Percent::from_percent(100));
+		<UnderperformPercentileByPercentToKick<Test>>::put(Percent::from_percent(10));
+		BlocksPerCollatorThisSession::<Test>::insert(3u64, 10);
+		BlocksPerCollatorThisSession::<Test>::insert(4u64, 9);
+		assert_eq!(
+			CollatorSelection::kick_stale_candidates(CollatorSelection::candidates()),
+			None
+		);
+		// Rational threshold = 8.1, kick 8 and below
+		<PerformancePercentileToConsiderForKick<Test>>::put(Percent::from_percent(100));
+		<UnderperformPercentileByPercentToKick<Test>>::put(Percent::from_percent(10));
+		BlocksPerCollatorThisSession::<Test>::insert(3u64, 8);
+		BlocksPerCollatorThisSession::<Test>::insert(4u64, 10);
+		assert_eq!(
+			CollatorSelection::kick_stale_candidates(CollatorSelection::candidates()),
+			Some(vec![3])
 		);
 	});
 }
@@ -593,19 +648,17 @@ fn kick_mechanism_manta() {
 		assert_eq!(Session::validators(), vec![1, 2, 3, 4, 5]);
 		assert_eq!(candidate_ids(), vec![3, 4, 5]);
 
-		// TC5: 5 is on threshold ( at 5 nodes, the 90th percentile is the second highest value of the set = 100, 10% threshold is 10 ), 3 is just above
+		// TC5: 5 is on threshold, don't kick ( at 5 nodes, the 80th percentile is the second highest value of the set = 100, 10% threshold is 10 )
 		set_all_validator_perf_to(100);
-		BlocksPerCollatorThisSession::<Test>::insert(3u64, 91);
 		BlocksPerCollatorThisSession::<Test>::insert(5u64, 90);
 		initialize_to_block(129);
 		set_all_validator_perf_to(100);
-		assert_eq!(candidate_ids(), vec![3, 4]);
+		assert_eq!(candidate_ids(), vec![3, 4, 5]);
 
 		//  TC6: Collator is added as candidate and removed next session before becoming active
 		initialize_to_block(139);
 		set_all_validator_perf_to(100);
-		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(5)));
-		assert_eq!(Session::validators(), vec![1, 2, 3, 4]);
+		assert_eq!(Session::validators(), vec![1, 2, 3, 4, 5]);
 		assert_eq!(candidate_ids(), vec![3, 4, 5]);
 		initialize_to_block(149);
 		// Next session is already planned and session keys are queued here
