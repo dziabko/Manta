@@ -25,7 +25,7 @@ use frame_support::{
 };
 use pallet_balances::Error as BalancesError;
 use sp_arithmetic::Percent;
-use sp_runtime::{testing::UintAuthorityId, traits::BadOrigin};
+use sp_runtime::{testing::UintAuthorityId, traits::BadOraigin};
 
 #[test]
 fn basic_setup_works() {
@@ -548,11 +548,6 @@ fn kick_mechanism_manta() {
 			.iter()
 			.map(|c| c.who.clone())
 			.collect::<Vec<_>>()
-	};
-	let _print_collator_perf = || {
-		BlocksPerCollatorThisSession::<Test>::iter().for_each(|tuple| {
-			println!("{:?}", tuple);
-		});
 	};
 	let set_all_validator_perf_to = |n: u32| {
 		for v in Session::validators() {
