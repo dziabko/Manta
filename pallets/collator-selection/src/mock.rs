@@ -21,7 +21,7 @@ use frame_support::{
 	traits::{FindAuthor, GenesisBuild, ValidatorRegistration, ValidatorSet},
 	PalletId,
 };
-use frame_system as system;
+
 use frame_system::EnsureSignedBy;
 use sp_arithmetic::Percent;
 use sp_core::H256;
@@ -43,11 +43,11 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
 		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>},
+		CollatorSelection: collator_selection::{Pallet, Call, Storage, Event<T>},
 		Aura: pallet_aura::{Pallet, Storage, Config<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		CollatorSelection: collator_selection::{Pallet, Call, Storage, Event<T>},
-		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
 	}
 );
 
@@ -56,7 +56,7 @@ parameter_types! {
 	pub const SS58Prefix: u8 = 78;
 }
 
-impl system::Config for Test {
+impl frame_system::Config for Test {
 	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
@@ -80,6 +80,7 @@ impl system::Config for Test {
 	type SystemWeightInfo = ();
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_types! {

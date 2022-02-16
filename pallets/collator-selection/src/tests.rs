@@ -21,6 +21,7 @@ use frame_support::{
 	traits::{Currency, GenesisBuild, OnInitialize},
 };
 use pallet_balances::Error as BalancesError;
+use sp_runtime::testing::UintAuthorityId;
 use sp_runtime::traits::BadOrigin;
 
 #[test]
@@ -292,7 +293,11 @@ fn session_management_works() {
 
 		// add a new collator
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
-
+		assert_ok!(Session::set_keys(
+			Origin::signed(3),
+			UintAuthorityId(3).into(),
+			vec![]
+		));
 		// session won't see this.
 		assert_eq!(SessionHandlerCollators::get(), vec![1, 2]);
 		// but we have a new candidate.
@@ -314,7 +319,7 @@ fn session_management_works() {
 	});
 }
 #[test]
-fn kick_algorithm() {
+fn kick_algorithm_manta() {
 	new_test_ext().execute_with(|| {
 		// add collator candidates
 		assert_ok!(CollatorSelection::set_desired_candidates(
@@ -322,8 +327,23 @@ fn kick_algorithm() {
 			5
 		));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
+		assert_ok!(Session::set_keys(
+			Origin::signed(3),
+			UintAuthorityId(3).into(),
+			vec![]
+		));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
+		assert_ok!(Session::set_keys(
+			Origin::signed(4),
+			UintAuthorityId(4).into(),
+			vec![]
+		));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(5)));
+		assert_ok!(Session::set_keys(
+			Origin::signed(5),
+			UintAuthorityId(5).into(),
+			vec![]
+		));
 
 		// 80th percentile = 10, kick 9 and below, remove 3,4,5
 		BlocksPerCollatorThisSession::<Test>::insert(1u64, 10);
@@ -354,7 +374,47 @@ fn kick_algorithm() {
 	});
 }
 #[test]
-fn kick_mechanism() {
+fn kick_mechanism_parity() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
+		assert_ok!(Session::set_keys(
+			Origin::signed(3),
+			UintAuthorityId(3).into(),
+			vec![]
+		));
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
+		assert_ok!(Session::set_keys(
+			Origin::signed(4),
+			UintAuthorityId(4).into(),
+			vec![]
+		));
+		initialize_to_block(10);
+		assert_eq!(CollatorSelection::candidates().len(), 2);
+		initialize_to_block(20);
+		assert_eq!(SessionChangeBlock::get(), 20);
+		assert_eq!(CollatorSelection::candidates().len(), 2);
+		assert_eq!(Session::validators().len(), 4); // all candidates active
+		initialize_to_block(30);
+		// 4 authored all blocks in this the past session, gets to stay 3 was kicked on session change
+		assert_eq!(CollatorSelection::candidates().len(), 1);
+		// 3 will be kicked after 1 session delay
+		assert_eq!(SessionHandlerCollators::get(), vec![1, 2, 3, 4]);
+		let collator = CandidateInfo {
+			who: 4,
+			deposit: 10,
+		};
+		assert_eq!(CollatorSelection::candidates(), vec![collator]);
+		// assert_eq!(CollatorSelection::last_authored_block(4), 20); // NOTE: not used in manta fork
+		initialize_to_block(40);
+		// 3 gets kicked after 1 session delay
+		assert_eq!(SessionHandlerCollators::get(), vec![1, 2, 4]);
+		// kicked collator gets funds back
+		assert_eq!(Balances::free_balance(3), 100);
+	});
+}
+
+#[test]
+fn kick_mechanism_manta() {
 	let candidate_ids = || {
 		CollatorSelection::candidates()
 			.iter()
@@ -380,8 +440,23 @@ fn kick_mechanism() {
 			5
 		));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
+		assert_ok!(Session::set_keys(
+			Origin::signed(3),
+			UintAuthorityId(3).into(),
+			vec![]
+		));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
+		assert_ok!(Session::set_keys(
+			Origin::signed(4),
+			UintAuthorityId(4).into(),
+			vec![]
+		));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(5)));
+		assert_ok!(Session::set_keys(
+			Origin::signed(5),
+			UintAuthorityId(5).into(),
+			vec![]
+		));
 		assert_eq!(Session::validators(), vec![1, 2]);
 		assert_eq!(candidate_ids(), vec![3, 4, 5]);
 

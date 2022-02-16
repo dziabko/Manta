@@ -278,9 +278,7 @@ benchmarks! {
 		let candidates = <Candidates<T>>::get();
 
 		// nodes on or above percentile
-		let non_removals = ( (p as f64) / 100.0
-				* c as f64) as u32 ;
-				// non_removals = ordinal rank in lib.rs
+		let non_removals = p.mul_ceil(c); // non_removals = ordinal rank in lib.rs
 		let r = c.saturating_sub(non_removals);
 
 		for i in 0..c {
