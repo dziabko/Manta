@@ -291,8 +291,8 @@ benchmarks! {
 		let c in 1 .. T::MaxCandidates::get();
 
 		<CandidacyBond<T>>::put(T::Currency::minimum_balance());
-		<PerformancePercentileToConsiderForKick<T>>::put(Percent::from_percent(100)); // Consider all collators
-		<UnderperformPercentileByPercentToKick<T>>::put(Percent::from_percent(0)); 	  // Kick anyone not at perfect performant
+		<PerformancePercentileToConsiderForKick<T>>::put(Percent::from_percent(100));	// Consider all collators
+		<UnderperformPercentileByPercentToKick<T>>::put(Percent::from_percent(0));		// Kick anyone not at perfect performance
 		<DesiredCandidates<T>>::put(c);
 		frame_system::Pallet::<T>::set_block_number(0u32.into());
 
@@ -300,8 +300,8 @@ benchmarks! {
 		register_validators::<T>(c);
 		register_candidates::<T>(c);
 
-		let max_blocks = 1800u32;
-		let zero_blocks = 0u32;
+		let new_block = 1800u32;
+		let zero_block = 0u32;
 		let candidates = <Candidates<T>>::get();
 
 		// nodes on or above percentile
@@ -309,22 +309,22 @@ benchmarks! {
 		let r = c.saturating_sub(non_removals);
 
 		for i in 0..c {
-			<BlocksPerCollatorThisSession<T>>::insert(candidates[i as usize].who.clone(), zero_blocks);
+			<BlocksPerCollatorThisSession<T>>::insert(candidates[i as usize].who.clone(), zero_block);
 		}
 
 		if non_removals > 0 {
 			for i in 0..non_removals {
-				<BlocksPerCollatorThisSession<T>>::insert(candidates[i as usize].who.clone(), max_blocks);
+				<BlocksPerCollatorThisSession<T>>::insert(candidates[i as usize].who.clone(), new_block);
 			}
 		} else {
 			for i in 0..c {
-				<BlocksPerCollatorThisSession<T>>::insert(candidates[i as usize].who.clone(), max_blocks);
+				<BlocksPerCollatorThisSession<T>>::insert(candidates[i as usize].who.clone(), new_block);
 			}
 		}
 
 		let pre_length = <Candidates<T>>::get().len();
 
-		frame_system::Pallet::<T>::set_block_number(max_blocks.into());
+		frame_system::Pallet::<T>::set_block_number(new_block.into());
 
 		assert!(<Candidates<T>>::get().len() == c as usize);
 	}: {
