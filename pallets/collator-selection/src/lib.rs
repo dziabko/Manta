@@ -200,8 +200,8 @@ pub mod pallet {
 	pub type EvictionPercentile<T: Config> = StorageValue<_, Percent, ValueQuery>;
 
 	/// Percentage of underperformance to _tolerate_ before evicting a collator
-	/// 
-	/// i.e. A collator gets evicted if it produced _less_ than x% fewer blocks than the collator at EvictionPercentile 
+	///
+	/// i.e. A collator gets evicted if it produced _less_ than x% fewer blocks than the collator at EvictionPercentile
 	#[pallet::storage]
 	#[pallet::getter(fn eviction_threshold)]
 	pub type EvictionThreshold<T: Config> = StorageValue<_, Percent, ValueQuery>;
@@ -597,9 +597,9 @@ pub mod pallet {
 			let threshold_factor = underperformance_threshold_percent.left_from_one(); // bounded to [0,1] due to checks on underperformance_threshold_percent
 			let kick_threshold =
 				(threshold_factor.mul_ceil(blocks_created_at_percentile)) as BlockCount;
-			log::info!(
-				"Session Performance stats: {:?}-th percentile: {:?} blocks. Evicting collators who produced less than {} blocks",
-				percentile_for_kick,
+			log::trace!(
+				"Session Performance stats: {}-th percentile: {:?} blocks. Evicting collators who produced less than {} blocks",
+				percentile_for_kick.mul_ceil(100u8),
 				blocks_created_at_percentile,
 				kick_threshold
 			);
@@ -615,11 +615,11 @@ pub mod pallet {
 						Self::try_remove_candidate(&acc_id)
 							.and_then(|_| {
 								removed_account_ids.push(acc_id.clone());
-								log::info!("Removed collator of account {:?} as it only produced {} blocks this session", &acc_id, my_blocks_this_session);
+								log::info!("Removed collator of account {:?} as it only produced {} blocks this session which is below acceptable threshold of {}", &acc_id, my_blocks_this_session,kick_threshold);
 								Ok(())
 							})
 							.unwrap_or_else(|why| -> () {
-								log::warn!("Failed to remove candidate {:?}", why);
+								log::warn!("Failed to remove candidate due to underperformance {:?}", why);
 								debug_assert!(false, "failed to remove candidate {:?}", why);
 							});
 					}
