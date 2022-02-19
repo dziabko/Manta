@@ -1,6 +1,15 @@
 # CHANGELOG
 
-## Pending
+## Unreleased
+### Breaking changes
+
+### Features
+- [\#358](https://github.com/Manta-Network/Manta/pull/358) Underperforming collators are automatically removed from the collator set after each session
+
+### Improvements
+
+### Bug fixes
+
 
 ## v3.1.4
 ### Breaking changes
