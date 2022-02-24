@@ -288,7 +288,7 @@ benchmarks! {
 
 	// worst case for new session.
 	new_session {
-		let c in 1 .. T::MaxCandidates::get(); // total candidates
+		let c in 1 .. T::MaxCandidates::get();
 
 		<CandidacyBond<T>>::put(T::Currency::minimum_balance());
 		<EvictionPercentile<T>>::put(Percent::from_percent(100));	// Consider all collators
