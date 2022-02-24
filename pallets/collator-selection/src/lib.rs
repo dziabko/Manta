@@ -700,14 +700,10 @@ pub mod pallet {
 					})
 					.collect(),
 			};
-			let removed_candidate_count = candidates_len_before - active_candidate_ids.len();
 			let result = Self::assemble_collators(active_candidate_ids);
 
 			frame_system::Pallet::<T>::register_extra_weight_unchecked(
-				T::WeightInfo::new_session(
-					candidates_len_before as u32,
-					removed_candidate_count as u32,
-				),
+				T::WeightInfo::new_session(candidates_len_before as u32),
 				DispatchClass::Mandatory,
 			);
 
