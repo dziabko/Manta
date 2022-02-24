@@ -288,7 +288,7 @@ benchmarks! {
 
 	// worst case for new session.
 	new_session {
-		let c in 1 .. T::MaxCandidates::get();
+		let c in 1 .. T::MaxCandidates::get(); // total candidates
 
 		<CandidacyBond<T>>::put(T::Currency::minimum_balance());
 		<EvictionPercentile<T>>::put(Percent::from_percent(100));	// Consider all collators
@@ -304,23 +304,14 @@ benchmarks! {
 		let zero_block = 0u32;
 		let candidates = <Candidates<T>>::get();
 
-		// nodes on or above percentile
-		let non_removals = p.mul_ceil(c); // non_removals = ordinal rank in lib.rs
-		let r = c.saturating_sub(non_removals);
+		let underperformers = &candidates[0..candidates.len()-1];
+		let top_performer = &candidates[candidates.len()-1];
 
-		for i in 0..c {
-			<BlocksPerCollatorThisSession<T>>::insert(candidates[i as usize].who.clone(), zero_block);
+		// worst case: everyone but one collator underperforms and must be removed
+		for up in underperformers{
+			<BlocksPerCollatorThisSession<T>>::insert(up.who.clone(), zero_block);
 		}
-
-		if non_removals > 0 {
-			for i in 0..non_removals {
-				<BlocksPerCollatorThisSession<T>>::insert(candidates[i as usize].who.clone(), new_block);
-			}
-		} else {
-			for i in 0..c {
-				<BlocksPerCollatorThisSession<T>>::insert(candidates[i as usize].who.clone(), new_block);
-			}
-		}
+		<BlocksPerCollatorThisSession<T>>::insert(top_performer.who.clone(), new_block);
 
 		let pre_length = <Candidates<T>>::get().len();
 
@@ -330,7 +321,7 @@ benchmarks! {
 	}: {
 		<CollatorSelection<T> as SessionManager<_>>::new_session(0)
 	} verify {
-		if c > 1 && r > 0 {
+		if c > 1 {
 			assert!(<Candidates<T>>::get().len() < pre_length);
 		} else {
 			assert!(<Candidates<T>>::get().len() == pre_length);
