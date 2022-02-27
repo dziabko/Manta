@@ -428,7 +428,7 @@ fn kick_algorithm_manta() {
 		BlocksPerCollatorThisSession::<Test>::insert(4u64, 9);
 		BlocksPerCollatorThisSession::<Test>::insert(5u64, 0);
 		assert_eq!(
-			CollatorSelection::kick_stale_candidates(CollatorSelection::candidates()),
+			CollatorSelection::evict_bad_collators(CollatorSelection::candidates()),
 			vec![5, 3]
 		);
 
@@ -443,7 +443,7 @@ fn kick_algorithm_manta() {
 		BlocksPerCollatorThisSession::<Test>::insert(4u64, 9);
 		BlocksPerCollatorThisSession::<Test>::insert(5u64, 0);
 		assert_eq!(
-			CollatorSelection::kick_stale_candidates(CollatorSelection::candidates()),
+			CollatorSelection::evict_bad_collators(CollatorSelection::candidates()),
 			vec![5, 3]
 		);
 
@@ -456,21 +456,21 @@ fn kick_algorithm_manta() {
 		BlocksPerCollatorThisSession::<Test>::insert(3u64, 9);
 		BlocksPerCollatorThisSession::<Test>::insert(4u64, 10);
 		assert_eq!(
-			CollatorSelection::kick_stale_candidates(CollatorSelection::candidates()),
+			CollatorSelection::evict_bad_collators(CollatorSelection::candidates()),
 			vec![3]
 		);
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
 		// Allow any underperformance => eviction disabled
 		EvictionTolerance::<Test>::put(Percent::from_percent(100));
 		assert_eq!(
-			CollatorSelection::kick_stale_candidates(CollatorSelection::candidates()),
+			CollatorSelection::evict_bad_collators(CollatorSelection::candidates()),
 			empty_vec
 		);
 		// 0-th percentile = use worst collator as benchmark => eviction disabled
 		EvictionBaseline::<Test>::put(Percent::from_percent(0));
 		EvictionTolerance::<Test>::put(Percent::from_percent(0));
 		assert_eq!(
-			CollatorSelection::kick_stale_candidates(CollatorSelection::candidates()),
+			CollatorSelection::evict_bad_collators(CollatorSelection::candidates()),
 			empty_vec
 		);
 		// Same performance => no kick
@@ -479,7 +479,7 @@ fn kick_algorithm_manta() {
 		BlocksPerCollatorThisSession::<Test>::insert(3u64, 10);
 		BlocksPerCollatorThisSession::<Test>::insert(4u64, 10);
 		assert_eq!(
-			CollatorSelection::kick_stale_candidates(CollatorSelection::candidates()),
+			CollatorSelection::evict_bad_collators(CollatorSelection::candidates()),
 			empty_vec
 		);
 		// Exactly on threshold => no kick
@@ -488,7 +488,7 @@ fn kick_algorithm_manta() {
 		BlocksPerCollatorThisSession::<Test>::insert(3u64, 10);
 		BlocksPerCollatorThisSession::<Test>::insert(4u64, 9);
 		assert_eq!(
-			CollatorSelection::kick_stale_candidates(CollatorSelection::candidates()),
+			CollatorSelection::evict_bad_collators(CollatorSelection::candidates()),
 			empty_vec
 		);
 		// Rational threshold = 8.1, kick 8 and below
@@ -497,7 +497,7 @@ fn kick_algorithm_manta() {
 		BlocksPerCollatorThisSession::<Test>::insert(3u64, 8);
 		BlocksPerCollatorThisSession::<Test>::insert(4u64, 10);
 		assert_eq!(
-			CollatorSelection::kick_stale_candidates(CollatorSelection::candidates()),
+			CollatorSelection::evict_bad_collators(CollatorSelection::candidates()),
 			vec![3]
 		);
 	});

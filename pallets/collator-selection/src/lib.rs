@@ -557,7 +557,7 @@ pub mod pallet {
 
 		/// Removes collators with unsatisfactory performance
 		/// Returns the removed AccountIds
-		pub fn kick_stale_candidates(
+		pub fn evict_bad_collators(
 			candidates: Vec<CandidateInfo<T::AccountId, BalanceOf<T>>>,
 		) -> Vec<T::AccountId> {
 			use sp_runtime::PerThing;
@@ -681,7 +681,7 @@ pub mod pallet {
 
 			let candidates = Self::candidates();
 			let candidates_len_before = candidates.len();
-			let removed_candidate_ids = Self::kick_stale_candidates(candidates.clone());
+			let removed_candidate_ids = Self::evict_bad_collators(candidates.clone());
 			let active_candidate_ids = candidates
 				.iter()
 				.filter_map(|x| {
