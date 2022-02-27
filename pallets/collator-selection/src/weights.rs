@@ -46,8 +46,8 @@ pub trait WeightInfo {
 	fn set_invulnerables(b: u32, ) -> Weight;
 	fn set_desired_candidates() -> Weight;
 	fn set_candidacy_bond() -> Weight;
-	fn set_eviction_percentile() -> Weight;
-	fn set_eviction_threshold() -> Weight;
+	fn set_eviction_baseline() -> Weight;
+	fn set_eviction_tolerance() -> Weight;
 	fn register_as_candidate(c: u32, ) -> Weight;
 	fn leave_intent(c: u32, ) -> Weight;
 	fn remove_collator(c: u32, ) -> Weight;
@@ -76,13 +76,13 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		(10_094_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	// Storage: CollatorSelection EvictionPercentile (r:0 w:1)
-	fn set_eviction_percentile() -> Weight {
+	// Storage: CollatorSelection EvictionBaseline (r:0 w:1)
+	fn set_eviction_baseline() -> Weight {
 		(9_656_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	// Storage: CollatorSelection EvictionThreshold (r:0 w:1)
-	fn set_eviction_threshold() -> Weight {
+	// Storage: CollatorSelection EvictionTolerance (r:0 w:1)
+	fn set_eviction_tolerance() -> Weight {
 		(9_603_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -136,8 +136,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 	// Storage: CollatorSelection Candidates (r:1 w:0)
-	// Storage: CollatorSelection EvictionPercentile (r:1 w:0)
-	// Storage: CollatorSelection EvictionThreshold (r:1 w:0)
+	// Storage: CollatorSelection EvictionBaseline (r:1 w:0)
+	// Storage: CollatorSelection EvictionTolerance (r:1 w:0)
 	// Storage: CollatorSelection BlocksPerCollatorThisSession (r:2 w:2)
 	// Storage: CollatorSelection Invulnerables (r:1 w:0)
 	// Storage: System BlockWeight (r:1 w:1)
@@ -173,13 +173,13 @@ impl WeightInfo for () {
 		(10_094_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
-	// Storage: CollatorSelection EvictionPercentile (r:0 w:1)
-	fn set_eviction_percentile() -> Weight {
+	// Storage: CollatorSelection EvictionBaseline (r:0 w:1)
+	fn set_eviction_baseline() -> Weight {
 		(9_656_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
-	// Storage: CollatorSelection EvictionThreshold (r:0 w:1)
-	fn set_eviction_threshold() -> Weight {
+	// Storage: CollatorSelection EvictionTolerance (r:0 w:1)
+	fn set_eviction_tolerance() -> Weight {
 		(9_603_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
@@ -233,8 +233,8 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(4 as Weight))
 	}
 	// Storage: CollatorSelection Candidates (r:1 w:0)
-	// Storage: CollatorSelection EvictionPercentile (r:1 w:0)
-	// Storage: CollatorSelection EvictionThreshold (r:1 w:0)
+	// Storage: CollatorSelection EvictionBaseline (r:1 w:0)
+	// Storage: CollatorSelection EvictionTolerance (r:1 w:0)
 	// Storage: CollatorSelection BlocksPerCollatorThisSession (r:2 w:2)
 	// Storage: CollatorSelection Invulnerables (r:1 w:0)
 	// Storage: System BlockWeight (r:1 w:1)

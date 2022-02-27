@@ -16,8 +16,8 @@
 
 use crate as collator_selection;
 use crate::{
-	mock::*, BlocksPerCollatorThisSession, CandidateInfo, Error, EvictionPercentile,
-	EvictionThreshold,
+	mock::*, BlocksPerCollatorThisSession, CandidateInfo, Error, EvictionBaseline,
+	EvictionTolerance,
 };
 use frame_support::{
 	assert_noop, assert_ok,
@@ -99,74 +99,74 @@ fn set_candidacy_bond() {
 }
 
 #[test]
-fn set_eviction_percentile() {
+fn set_eviction_baseline() {
 	new_test_ext().execute_with(|| {
 		// given
 		assert_eq!(
-			CollatorSelection::eviction_percentile(),
+			CollatorSelection::eviction_baseline(),
 			Percent::from_percent(80)
 		);
 
 		// can set
-		assert_ok!(CollatorSelection::set_eviction_percentile(
+		assert_ok!(CollatorSelection::set_eviction_baseline(
 			Origin::signed(RootAccount::get()),
 			100
 		));
 		assert_eq!(
-			CollatorSelection::eviction_percentile(),
+			CollatorSelection::eviction_baseline(),
 			Percent::from_percent(100)
 		);
 
 		// saturates to 100
-		assert_ok!(CollatorSelection::set_eviction_percentile(
+		assert_ok!(CollatorSelection::set_eviction_baseline(
 			Origin::signed(RootAccount::get()),
 			101
 		));
 		assert_eq!(
-			CollatorSelection::eviction_percentile(),
+			CollatorSelection::eviction_baseline(),
 			Percent::from_percent(100)
 		);
 
 		// rejects bad origin.
 		assert_noop!(
-			CollatorSelection::set_eviction_percentile(Origin::signed(1), 8),
+			CollatorSelection::set_eviction_baseline(Origin::signed(1), 8),
 			BadOrigin
 		);
 	});
 }
 
 #[test]
-fn set_eviction_threshold() {
+fn set_eviction_tolerance() {
 	new_test_ext().execute_with(|| {
 		// given
 		assert_eq!(
-			CollatorSelection::eviction_threshold(),
+			CollatorSelection::eviction_tolerance(),
 			Percent::from_percent(10)
 		);
 
 		// can set
-		assert_ok!(CollatorSelection::set_eviction_threshold(
+		assert_ok!(CollatorSelection::set_eviction_tolerance(
 			Origin::signed(RootAccount::get()),
 			5
 		));
 		assert_eq!(
-			CollatorSelection::eviction_threshold(),
+			CollatorSelection::eviction_tolerance(),
 			Percent::from_percent(5)
 		);
 
 		// saturates to 100
-		assert_ok!(CollatorSelection::set_eviction_threshold(
+		assert_ok!(CollatorSelection::set_eviction_tolerance(
 			Origin::signed(RootAccount::get()),
 			101
 		));
 		assert_eq!(
-			CollatorSelection::eviction_threshold(),
+			CollatorSelection::eviction_tolerance(),
 			Percent::from_percent(100)
 		);
 
 		// rejects bad origin.
 		assert_noop!(
-			CollatorSelection::set_eviction_threshold(Origin::signed(1), 8),
+			CollatorSelection::set_eviction_tolerance(Origin::signed(1), 8),
 			BadOrigin
 		);
 	});
@@ -450,8 +450,8 @@ fn kick_algorithm_manta() {
 		// Test boundary conditions
 		let empty_vec = Vec::<<Test as frame_system::Config>::AccountId>::new();
 		// Kick anyone not at perfect performance
-		EvictionPercentile::<Test>::put(Percent::from_percent(100));
-		EvictionThreshold::<Test>::put(Percent::from_percent(0));
+		EvictionBaseline::<Test>::put(Percent::from_percent(100));
+		EvictionTolerance::<Test>::put(Percent::from_percent(0));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
 		BlocksPerCollatorThisSession::<Test>::insert(3u64, 9);
 		BlocksPerCollatorThisSession::<Test>::insert(4u64, 10);
@@ -461,21 +461,21 @@ fn kick_algorithm_manta() {
 		);
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
 		// Allow any underperformance => eviction disabled
-		EvictionThreshold::<Test>::put(Percent::from_percent(100));
+		EvictionTolerance::<Test>::put(Percent::from_percent(100));
 		assert_eq!(
 			CollatorSelection::kick_stale_candidates(CollatorSelection::candidates()),
 			empty_vec
 		);
 		// 0-th percentile = use worst collator as benchmark => eviction disabled
-		EvictionPercentile::<Test>::put(Percent::from_percent(0));
-		EvictionThreshold::<Test>::put(Percent::from_percent(0));
+		EvictionBaseline::<Test>::put(Percent::from_percent(0));
+		EvictionTolerance::<Test>::put(Percent::from_percent(0));
 		assert_eq!(
 			CollatorSelection::kick_stale_candidates(CollatorSelection::candidates()),
 			empty_vec
 		);
 		// Same performance => no kick
-		EvictionPercentile::<Test>::put(Percent::from_percent(100));
-		EvictionThreshold::<Test>::put(Percent::from_percent(0));
+		EvictionBaseline::<Test>::put(Percent::from_percent(100));
+		EvictionTolerance::<Test>::put(Percent::from_percent(0));
 		BlocksPerCollatorThisSession::<Test>::insert(3u64, 10);
 		BlocksPerCollatorThisSession::<Test>::insert(4u64, 10);
 		assert_eq!(
@@ -483,8 +483,8 @@ fn kick_algorithm_manta() {
 			empty_vec
 		);
 		// Exactly on threshold => no kick
-		EvictionPercentile::<Test>::put(Percent::from_percent(100));
-		EvictionThreshold::<Test>::put(Percent::from_percent(10));
+		EvictionBaseline::<Test>::put(Percent::from_percent(100));
+		EvictionTolerance::<Test>::put(Percent::from_percent(10));
 		BlocksPerCollatorThisSession::<Test>::insert(3u64, 10);
 		BlocksPerCollatorThisSession::<Test>::insert(4u64, 9);
 		assert_eq!(
@@ -492,8 +492,8 @@ fn kick_algorithm_manta() {
 			empty_vec
 		);
 		// Rational threshold = 8.1, kick 8 and below
-		EvictionPercentile::<Test>::put(Percent::from_percent(100));
-		EvictionThreshold::<Test>::put(Percent::from_percent(10));
+		EvictionBaseline::<Test>::put(Percent::from_percent(100));
+		EvictionTolerance::<Test>::put(Percent::from_percent(10));
 		BlocksPerCollatorThisSession::<Test>::insert(3u64, 8);
 		BlocksPerCollatorThisSession::<Test>::insert(4u64, 10);
 		assert_eq!(
@@ -683,8 +683,8 @@ fn cannot_set_genesis_value_twice() {
 
 	let collator_selection = collator_selection::GenesisConfig::<Test> {
 		desired_candidates: 2,
-		eviction_percentile: Percent::from_percent(80),
-		eviction_threshold: Percent::from_percent(10),
+		eviction_baseline: Percent::from_percent(80),
+		eviction_tolerance: Percent::from_percent(10),
 		candidacy_bond: 10,
 		invulnerables,
 	};

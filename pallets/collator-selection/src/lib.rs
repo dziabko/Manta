@@ -196,15 +196,15 @@ pub mod pallet {
 
 	/// Performance percentile to use as baseline for collator eviction
 	#[pallet::storage]
-	#[pallet::getter(fn eviction_percentile)]
-	pub type EvictionPercentile<T: Config> = StorageValue<_, Percent, ValueQuery>;
+	#[pallet::getter(fn eviction_baseline)]
+	pub type EvictionBaseline<T: Config> = StorageValue<_, Percent, ValueQuery>;
 
 	/// Percentage of underperformance to _tolerate_ before evicting a collator
 	///
-	/// i.e. A collator gets evicted if it produced _less_ than x% fewer blocks than the collator at EvictionPercentile
+	/// i.e. A collator gets evicted if it produced _less_ than x% fewer blocks than the collator at EvictionBaseline
 	#[pallet::storage]
-	#[pallet::getter(fn eviction_threshold)]
-	pub type EvictionThreshold<T: Config> = StorageValue<_, Percent, ValueQuery>;
+	#[pallet::getter(fn eviction_tolerance)]
+	pub type EvictionTolerance<T: Config> = StorageValue<_, Percent, ValueQuery>;
 
 	/// Desired number of candidates.
 	///
@@ -222,8 +222,8 @@ pub mod pallet {
 	pub struct GenesisConfig<T: Config> {
 		pub invulnerables: Vec<T::AccountId>,
 		pub candidacy_bond: BalanceOf<T>,
-		pub eviction_percentile: Percent,
-		pub eviction_threshold: Percent,
+		pub eviction_baseline: Percent,
+		pub eviction_tolerance: Percent,
 		pub desired_candidates: u32,
 	}
 
@@ -233,8 +233,8 @@ pub mod pallet {
 			Self {
 				invulnerables: Default::default(),
 				candidacy_bond: Default::default(),
-				eviction_percentile: Percent::zero(), // Note: eviction disabled by default
-				eviction_threshold: Percent::one(),   // Note: eviction disabled by default
+				eviction_baseline: Percent::zero(), // Note: eviction disabled by default
+				eviction_tolerance: Percent::one(), // Note: eviction disabled by default
 				desired_candidates: Default::default(),
 			}
 		}
@@ -261,17 +261,17 @@ pub mod pallet {
 				"genesis desired_candidates are more than T::MaxCandidates",
 			);
 			assert!(
-				self.eviction_percentile <= Percent::one(),
-				"Percentile must be given as number between 0 and 100",
+				self.eviction_baseline <= Percent::one(),
+				"Eviction baseline must be given as a percentile - number between 0 and 100",
 			);
 			assert!(
-				self.eviction_threshold <= Percent::one(),
-				"Kicking threshold must be given as number between 0 and 100",
+				self.eviction_tolerance <= Percent::one(),
+				"Eviction tolerance must be given as a percentage - number between 0 and 100",
 			);
 			<DesiredCandidates<T>>::put(&self.desired_candidates);
 			<CandidacyBond<T>>::put(&self.candidacy_bond);
-			<EvictionPercentile<T>>::put(&self.eviction_percentile);
-			<EvictionThreshold<T>>::put(&self.eviction_threshold);
+			<EvictionBaseline<T>>::put(&self.eviction_baseline);
+			<EvictionTolerance<T>>::put(&self.eviction_tolerance);
 			<Invulnerables<T>>::put(&self.invulnerables);
 		}
 	}
@@ -282,8 +282,8 @@ pub mod pallet {
 		NewInvulnerables(Vec<T::AccountId>),
 		NewDesiredCandidates(u32),
 		NewCandidacyBond(BalanceOf<T>),
-		NewEvictionPercentile(u8),
-		NewEvictionThreshold(u8),
+		NewEvictionBaseline(u8),
+		NewEvictionTolerance(u8),
 		CandidateAdded(T::AccountId, BalanceOf<T>),
 		CandidateRemoved(T::AccountId),
 	}
@@ -371,28 +371,28 @@ pub mod pallet {
 		/// Set the collator performance percentile used as baseline for eviction
 		///
 		/// `percentile`: x-th percentile of collator performance to use as eviction baseline
-		#[pallet::weight(T::WeightInfo::set_eviction_percentile())]
-		pub fn set_eviction_percentile(
+		#[pallet::weight(T::WeightInfo::set_eviction_baseline())]
+		pub fn set_eviction_baseline(
 			origin: OriginFor<T>,
 			percentile: u8,
 		) -> DispatchResultWithPostInfo {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			<EvictionPercentile<T>>::put(Percent::from_percent(percentile)); // NOTE: from_percent saturates at 100
-			Self::deposit_event(Event::NewEvictionPercentile(percentile));
+			<EvictionBaseline<T>>::put(Percent::from_percent(percentile)); // NOTE: from_percent saturates at 100
+			Self::deposit_event(Event::NewEvictionBaseline(percentile));
 			Ok(().into())
 		}
 
 		/// Set the tolerated underperformance percentage before evicting
 		///
-		/// `percentage`: x% of missed blocks under eviction_percentile to tolerate
-		#[pallet::weight(T::WeightInfo::set_eviction_threshold())]
-		pub fn set_eviction_threshold(
+		/// `percentage`: x% of missed blocks under eviction_baseline to tolerate
+		#[pallet::weight(T::WeightInfo::set_eviction_tolerance())]
+		pub fn set_eviction_tolerance(
 			origin: OriginFor<T>,
 			percentage: u8,
 		) -> DispatchResultWithPostInfo {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			<EvictionThreshold<T>>::put(Percent::from_percent(percentage)); // NOTE: from_percent saturates at 100
-			Self::deposit_event(Event::NewEvictionThreshold(percentage));
+			<EvictionTolerance<T>>::put(Percent::from_percent(percentage)); // NOTE: from_percent saturates at 100
+			Self::deposit_event(Event::NewEvictionTolerance(percentage));
 			Ok(().into())
 		}
 
@@ -567,12 +567,12 @@ pub mod pallet {
 			if candidates.is_empty() {
 				return Vec::new(); // No candidates means we're running invulnerables only
 			}
-			let percentile_for_kick = Self::eviction_percentile();
+			let percentile_for_kick = Self::eviction_baseline();
 			if percentile_for_kick == Percent::zero() {
 				return Vec::new(); // Selecting 0-th percentile disables kicking. Upper bound check in fn build()
 			}
-			let underperformance_threshold_percent = Self::eviction_threshold();
-			if underperformance_threshold_percent == Percent::one() {
+			let underperformance_tolerated = Self::eviction_tolerance();
+			if underperformance_tolerated == Percent::one() {
 				return Vec::new(); // tolerating 100% underperformance disables kicking
 			}
 			let mut collator_perf_this_session =
@@ -590,32 +590,32 @@ pub mod pallet {
 			let index_at_ordinal_rank = ordinal_rank.saturating_sub(1); // -1 to accomodate 0-index counting, should not saturate due to precondition check and round up multiplication
 
 			// 3. Block number at rank is the percentile and our kick performance benchmark
-			let blocks_created_at_percentile: BlockCount =
+			let blocks_created_at_baseline: BlockCount =
 				collator_perf_this_session[index_at_ordinal_rank].1;
 
-			// 4. We kick if a collator produced fewer than (EvictionThreshold * EvictionPercentile rounded up) blocks than the percentile
-			let threshold_factor = underperformance_threshold_percent.left_from_one(); // bounded to [0,1] due to checks on underperformance_threshold_percent
-			let kick_threshold =
-				(threshold_factor.mul_ceil(blocks_created_at_percentile)) as BlockCount;
+			// 4. We kick if a collator produced fewer than (EvictionTolerance * EvictionBaseline rounded up) blocks than the percentile
+			let evict_below_blocks = (underperformance_tolerated
+				.left_from_one()
+				.mul_ceil(blocks_created_at_baseline)) as BlockCount;
 			log::trace!(
 				"Session Performance stats: {}-th percentile: {:?} blocks. Evicting collators who produced less than {} blocks",
 				percentile_for_kick.mul_ceil(100u8),
-				blocks_created_at_percentile,
-				kick_threshold
+				blocks_created_at_baseline,
+				evict_below_blocks
 			);
 
 			// 5. Walk the percentile slice, call try_remove_candidate if a collator is under threshold
 			let mut removed_account_ids: Vec<T::AccountId> = Vec::new();
 			let kick_candidates = &collator_perf_this_session[..index_at_ordinal_rank]; // ordinal-rank exclusive, the collator at percentile is safe
 			kick_candidates.iter().for_each(|(acc_id,my_blocks_this_session)| {
-				if *my_blocks_this_session < kick_threshold {
+				if *my_blocks_this_session < evict_below_blocks {
 					// If our validator is not also a candidate we're invulnerable or already kicked
 					if let Some(_) = candidates.iter().find(|&x|{x.who == *acc_id})
 					{
 						Self::try_remove_candidate(&acc_id)
 							.and_then(|_| {
 								removed_account_ids.push(acc_id.clone());
-								log::info!("Removed collator of account {:?} as it only produced {} blocks this session which is below acceptable threshold of {}", &acc_id, my_blocks_this_session,kick_threshold);
+								log::info!("Removed collator of account {:?} as it only produced {} blocks this session which is below acceptable threshold of {}", &acc_id, my_blocks_this_session,evict_below_blocks);
 								Ok(())
 							})
 							.unwrap_or_else(|why| -> () {

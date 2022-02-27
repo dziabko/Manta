@@ -149,28 +149,28 @@ benchmarks! {
 		assert_last_event::<T>(Event::NewCandidacyBond(bond).into());
 	}
 
-	set_eviction_percentile {
+	set_eviction_baseline {
 		let percentile = 80u8;
 		let origin = T::UpdateOrigin::successful_origin();
 	}: {
 		assert_ok!(
-			<CollatorSelection<T>>::set_eviction_percentile(origin, percentile)
+			<CollatorSelection<T>>::set_eviction_baseline(origin, percentile)
 		);
 	}
 	verify {
-		assert_last_event::<T>(Event::NewEvictionPercentile(percentile).into());
+		assert_last_event::<T>(Event::NewEvictionBaseline(percentile).into());
 	}
 
-	set_eviction_threshold {
+	set_eviction_tolerance {
 		let percentage = 10u8;
 		let origin = T::UpdateOrigin::successful_origin();
 	}: {
 		assert_ok!(
-			<CollatorSelection<T>>::set_eviction_threshold(origin, percentage)
+			<CollatorSelection<T>>::set_eviction_tolerance(origin, percentage)
 		);
 	}
 	verify {
-		assert_last_event::<T>(Event::NewEvictionThreshold(percentage).into());
+		assert_last_event::<T>(Event::NewEvictionTolerance(percentage).into());
 	}
 
 	// worse case is when we have all the max-candidate slots filled except one, and we fill that
@@ -291,12 +291,12 @@ benchmarks! {
 		let c in 1 .. T::MaxCandidates::get();
 
 		<CandidacyBond<T>>::put(T::Currency::minimum_balance());
-		<EvictionPercentile<T>>::put(Percent::from_percent(100));	// Consider all collators
-		<EvictionThreshold<T>>::put(Percent::from_percent(0));		// Kick anyone not at perfect performance
+		<EvictionBaseline<T>>::put(Percent::from_percent(100));	// Consider all collators
+		<EvictionTolerance<T>>::put(Percent::from_percent(0));		// Kick anyone not at perfect performance
 		<DesiredCandidates<T>>::put(c);
 		frame_system::Pallet::<T>::set_block_number(0u32.into());
 
-		let p = <CollatorSelection<T>>::eviction_percentile();
+		let p = <CollatorSelection<T>>::eviction_baseline();
 		register_validators::<T>(c);
 		register_candidates::<T>(c);
 

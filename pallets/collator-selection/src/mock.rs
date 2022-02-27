@@ -239,8 +239,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	let collator_selection = collator_selection::GenesisConfig::<Test> {
 		desired_candidates: 2,
 		candidacy_bond: 10,
-		eviction_percentile: Percent::from_percent(80),
-		eviction_threshold: Percent::from_percent(10),
+		eviction_baseline: Percent::from_percent(80),
+		eviction_tolerance: Percent::from_percent(10),
 		invulnerables,
 	};
 	let session = pallet_session::GenesisConfig::<Test> { keys };
