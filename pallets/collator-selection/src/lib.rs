@@ -470,7 +470,6 @@ pub mod pallet {
 			);
 
 			let deposit = Self::candidacy_bond();
-			// First authored block is current block plus kick threshold to handle session delay
 			let incoming = CandidateInfo {
 				who: new_candidate.clone(),
 				deposit,

@@ -18,7 +18,9 @@ use super::*;
 use crate as collator_selection;
 use frame_support::{
 	ord_parameter_types, parameter_types,
-	traits::{ConstU16, ConstU32, ConstU64, FindAuthor, GenesisBuild, ValidatorRegistration, ValidatorSet},
+	traits::{
+		ConstU16, ConstU32, ConstU64, FindAuthor, GenesisBuild, ValidatorRegistration, ValidatorSet,
+	},
 	PalletId,
 };
 
