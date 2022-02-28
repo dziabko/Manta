@@ -53,7 +53,7 @@ pub trait WeightInfo {
 	fn remove_collator(c: u32, ) -> Weight;
 	fn register_candidate(c: u32, ) -> Weight;
 	fn note_author() -> Weight;
-	fn new_session(c: u32, ) -> Weight;
+	fn new_session(c: u32, r: u32 ) -> Weight;
 }
 
 /// Weights for manta_collator_selection using the Substrate node and recommended hardware.
@@ -240,10 +240,11 @@ impl WeightInfo for () {
 	// Storage: System BlockWeight (r:1 w:1)
 	// Storage: Session Validators (r:1 w:0)
 	// Storage: System Account (r:1 w:1)
-	fn new_session(c: u32, ) -> Weight {
+	fn new_session(c: u32, r:u32 ) -> Weight {
 		(0 as Weight)
 			// Standard Error: 275_000
 			.saturating_add((32_572_000 as Weight).saturating_mul(c as Weight))
+			.saturating_add((0 as Weight).saturating_mul(r as Weight))
 			.saturating_add(RocksDbWeight::get().reads(6 as Weight))
 			.saturating_add(RocksDbWeight::get().reads((2 as Weight).saturating_mul(c as Weight)))
 			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
