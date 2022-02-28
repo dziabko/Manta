@@ -131,10 +131,11 @@ impl<T: frame_system::Config> manta_collator_selection::WeightInfo for Substrate
 	// Storage: System BlockWeight (r:1 w:1)
 	// Storage: Session Validators (r:1 w:0)
 	// Storage: System Account (r:1 w:1)
-	fn new_session(c: u32, ) -> Weight {
+	fn new_session(c: u32, r: u32 ) -> Weight {
 		(0 as Weight)
 			// Standard Error: 275_000
 			.saturating_add((32_572_000 as Weight).saturating_mul(c as Weight))
+			.saturating_add((0 as Weight).saturating_mul(r as Weight))
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))
 			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(c as Weight)))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
@@ -218,7 +219,7 @@ impl WeightInfo for () {
 	// Storage: System BlockWeight (r:1 w:1)
 	// Storage: Session Validators (r:1 w:0)
 	// Storage: System Account (r:1 w:1)
-	fn new_session(c: u32, r:u32 ) -> Weight {
+	fn new_session(c: u32, r: u32 ) -> Weight {
 		(0 as Weight)
 			// Standard Error: 275_000
 			.saturating_add((32_572_000 as Weight).saturating_mul(c as Weight))
