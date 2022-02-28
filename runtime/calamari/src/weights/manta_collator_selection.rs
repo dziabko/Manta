@@ -46,8 +46,6 @@ pub trait WeightInfo {
 	fn set_invulnerables(b: u32, ) -> Weight;
 	fn set_desired_candidates() -> Weight;
 	fn set_candidacy_bond() -> Weight;
-	fn set_eviction_baseline() -> Weight;
-	fn set_eviction_tolerance() -> Weight;
 	fn register_as_candidate(c: u32, ) -> Weight;
 	fn leave_intent(c: u32, ) -> Weight;
 	fn remove_collator(c: u32, ) -> Weight;
@@ -74,16 +72,6 @@ impl<T: frame_system::Config> manta_collator_selection::WeightInfo for Substrate
 	// Storage: CollatorSelection CandidacyBond (r:0 w:1)
 	fn set_candidacy_bond() -> Weight {
 		(10_094_000 as Weight)
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	// Storage: CollatorSelection EvictionBaseline (r:0 w:1)
-	fn set_eviction_baseline() -> Weight {
-		(9_656_000 as Weight)
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	// Storage: CollatorSelection EvictionTolerance (r:0 w:1)
-	fn set_eviction_tolerance() -> Weight {
-		(9_603_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: CollatorSelection Candidates (r:1 w:1)
@@ -171,16 +159,6 @@ impl WeightInfo for () {
 	// Storage: CollatorSelection CandidacyBond (r:0 w:1)
 	fn set_candidacy_bond() -> Weight {
 		(10_094_000 as Weight)
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	// Storage: CollatorSelection EvictionBaseline (r:0 w:1)
-	fn set_eviction_baseline() -> Weight {
-		(9_656_000 as Weight)
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	// Storage: CollatorSelection EvictionTolerance (r:0 w:1)
-	fn set_eviction_tolerance() -> Weight {
-		(9_603_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	// Storage: CollatorSelection Candidates (r:1 w:1)
