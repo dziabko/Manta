@@ -244,7 +244,7 @@ impl Contains<Call> for BaseFilter {
 			| Call::Balances(_)
 			| Call::Preimage(_)
 			| Call::Utility(_) => true,
-			| Call::XcmpQueue(_) | Call::PolkadotXcm(_) | Call::CumulusXcm(_) | Call::DmpQueue(_) // Filter XCM pallets
+			| Call::XcmpQueue(_) | Call::PolkadotXcm(_) | Call::DmpQueue(_) // Filter callables from XCM pallets
 			| _ => false
 		}
 	}
