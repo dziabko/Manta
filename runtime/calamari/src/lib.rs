@@ -813,7 +813,6 @@ impl manta_collator_selection::Config for Runtime {
 	type MaxInvulnerables = ConstU32<5>; // 5 invulnerables at most
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
 	type ValidatorIdOf = manta_collator_selection::IdentityCollator;
-	type AccountIdOf = manta_collator_selection::IdentityCollator;
 	type ValidatorRegistration = Session;
 	type WeightInfo = weights::manta_collator_selection::SubstrateWeight<Runtime>;
 }
