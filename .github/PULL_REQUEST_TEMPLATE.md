@@ -22,6 +22,7 @@ write a little note why.
 - [ ] Linked to Github issue with discussion and accepted design OR have an explanation in the PR that describes this work.
 - [ ] Wrote unit tests.
 - [ ] Updated relevant documentation in the code.
+- [ ] Added **one** line describing your change in `<branch>/CHANGELOG.md`
 - [ ] Re-reviewed `Files changed` in the Github PR explorer.
 - [ ] If runtime changes, need to update the version numbers properly:
    * `authoring_version`: The version of the authorship interface. An authoring node will not attempt to author blocks unless this is equal to its native runtime.
@@ -34,3 +35,4 @@ write a little note why.
 - [ ] If import a new pallet, choose a proper module index for it, and allow it in `BaseFilter`. Ensure **every** extrinsic works from front-end. If there's corresponding tool, ensure both work for each other.
 - [ ] If needed, update our Javascript/Typescript APIs. These APIs are offcially used by exchanges or community developers.
 - [ ] If we're going to issue a new release, freeze the code one week early(it depends, but usually it's one week), ensure we have enough time for related testing.
+- [ ] Check if inheriting any upstream runtime storage migrations. If any, perform tests with `try-runtime`.

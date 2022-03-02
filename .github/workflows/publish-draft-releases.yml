@@ -155,20 +155,20 @@ jobs:
           SCCACHE_DIR: /home/runner/.cache/sccache
         run: |
           source ${HOME}/.cargo/env
-          CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --release --verbose
+          cargo build --profile production --verbose
       -
         name: stop sccache server
         run: sccache --stop-server || true
       -
         name: strip
         run: |
-          strip target/release/manta
+          strip target/production/manta
       -
         name: upload
         uses: actions/upload-artifact@v2
         with:
           name: manta
-          path: target/release/manta
+          path: target/production/manta
       -
         name: upload
         uses: actions/upload-artifact@v2
@@ -250,7 +250,7 @@ jobs:
           SCCACHE_DIR: /home/runner/.cache/sccache
         run: |
           source ${HOME}/.cargo/env
-          cargo build --verbose --release
+          cargo build --profile production --verbose
       -
         if: ${{ needs.check-for-runtime-upgrade.outputs.do-versions-match == 'false' }}
         name: stop sccache server
@@ -259,14 +259,14 @@ jobs:
         if: ${{ needs.check-for-runtime-upgrade.outputs.do-versions-match == 'false' }}
         name: strip
         run: |
-          strip target/release/manta
+          strip target/production/manta
       -
         if: ${{ needs.check-for-runtime-upgrade.outputs.do-versions-match == 'false' }}
         name: upload
         uses: actions/upload-artifact@v2
         with:
           name: manta-base
-          path: target/release/manta
+          path: target/production/manta
       -
         name: upload
         uses: actions/upload-artifact@v2
@@ -277,6 +277,7 @@ jobs:
   runtime-upgrade-test:
     needs:
       - build-node-base
+      - build-node-current
       - build-runtimes
       - start-runtime-upgrade-tester
       - check-for-runtime-upgrade
@@ -307,7 +308,8 @@ jobs:
         name: fetch manta-base
         uses: actions/download-artifact@v2
         with:
-          name: manta-base
+          # Workaround for 0.9.16 breaking change, using the latest binary instead for base.
+          name: manta
       -
         if: ${{ needs.check-for-runtime-upgrade.outputs.do-versions-match == 'false' }}
         name: mv and chmod manta-base
@@ -321,7 +323,7 @@ jobs:
         if: ${{ needs.check-for-runtime-upgrade.outputs.do-versions-match == 'false' }}
         name: fetch and chmod polkadot
         run: |
-          curl -L -o $HOME/.local/bin/polkadot https://github.com/paritytech/polkadot/releases/download/v0.9.13/polkadot
+          curl -L -o $HOME/.local/bin/polkadot https://github.com/paritytech/polkadot/releases/download/v0.9.16/polkadot
           chmod +x $HOME/.local/bin/polkadot
           ls -ahl $HOME/.local/bin/
       -
@@ -530,7 +532,7 @@ jobs:
       -
         name: fetch and chmod polkadot
         run: |
-          curl -L -o $HOME/.local/bin/polkadot https://github.com/paritytech/polkadot/releases/download/v0.9.13/polkadot
+          curl -L -o $HOME/.local/bin/polkadot https://github.com/paritytech/polkadot/releases/download/v0.9.16/polkadot
           chmod +x $HOME/.local/bin/polkadot
           ls -ahl $HOME/.local/bin/
       -

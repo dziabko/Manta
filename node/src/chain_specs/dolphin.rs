@@ -39,10 +39,7 @@ pub fn dolphin_properties() -> Properties {
 	let mut p = Properties::new();
 	p.insert("ss58format".into(), constants::CALAMARI_SS58PREFIX.into());
 	p.insert("tokenDecimals".into(), constants::DOLPHIN_DECIMAL.into());
-	p.insert(
-		"tokenSymbol".into(),
-		constants::DOLPHIN_TOKEN_SYMBOL.into(),
-	);
+	p.insert("tokenSymbol".into(), constants::DOLPHIN_TOKEN_SYMBOL.into());
 	p
 }
 
@@ -74,10 +71,11 @@ pub fn dolphin_development_config() -> DolphinChainSpec {
 		vec![],
 		None,
 		Some(DOLPHIN_PROTOCOL_ID),
+		None,
 		Some(properties),
 		Extensions {
 			relay_chain: "".into(),
-			para_id: DOLPHIN_PARACHAIN_ID.into(),
+			para_id: DOLPHIN_PARACHAIN_ID,
 		},
 	)
 }
@@ -134,10 +132,11 @@ pub fn dolphin_local_config() -> DolphinChainSpec {
 		vec![],
 		None,
 		Some(DOLPHIN_PROTOCOL_ID),
+		None,
 		Some(properties),
 		Extensions {
 			relay_chain: "".into(),
-			para_id: DOLPHIN_PARACHAIN_ID.into(),
+			para_id: DOLPHIN_PARACHAIN_ID,
 		},
 	)
 }
@@ -167,7 +166,9 @@ fn dolphin_dev_genesis(
 		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
 		// of this.
 		aura: Default::default(),
-		sudo: dolphin_runtime::SudoConfig { key: root_key },
+		sudo: dolphin_runtime::SudoConfig {
+			key: Some(root_key),
+		},
 		parachain_info: dolphin_runtime::ParachainInfoConfig {
 			parachain_id: DOLPHIN_PARACHAIN_ID.into(),
 		},
@@ -182,8 +183,8 @@ fn dolphin_dev_genesis(
 				.cloned()
 				.map(|(acc, aura)| {
 					(
-						acc.clone(),                 // account id
-						acc,                         // validator id
+						acc.clone(),                // account id
+						acc,                        // validator id
 						dolphin_session_keys(aura), // session keys
 					)
 				})
@@ -212,6 +213,6 @@ pub fn dolphin_testnet_config() -> Result<DolphinChainSpec, String> {
 	let mut spec = DolphinChainSpec::from_json_bytes(
 		&include_bytes!("../../../genesis/dolphin-testnet.json")[..],
 	)?;
-	spec.extensions_mut().para_id = DOLPHIN_PARACHAIN_ID.into();
+	spec.extensions_mut().para_id = DOLPHIN_PARACHAIN_ID;
 	Ok(spec)
 }

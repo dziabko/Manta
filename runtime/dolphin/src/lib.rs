@@ -40,7 +40,10 @@ use sp_version::RuntimeVersion;
 
 use frame_support::{
 	construct_runtime, match_type, parameter_types,
-	traits::{Contains, Currency, Everything, Nothing, PrivilegeCmp},
+	traits::{
+		ConstU16, ConstU32, ConstU8, Contains, Currency, EnsureOneOf, Everything, Nothing,
+		PrivilegeCmp,
+	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_SECOND},
 		DispatchClass, IdentityFee, Weight,
@@ -48,8 +51,8 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::{
-	limits,
-	EnsureOneOf, EnsureRoot,
+	limits::{BlockLength, BlockWeights},
+	EnsureRoot,
 };
 use manta_primitives::{
 	time::*, AccountId, AuraId, Balance, BlockNumber, Hash, Header, Index, Signature,
@@ -112,10 +115,11 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("dolphin"),
 	impl_name: create_runtime_str!("dolphin"),
 	authoring_version: 1,
-	spec_version: 3120,
+	spec_version: 3141,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
+	state_version: 0,
 };
 
 /// The version information used to identify this runtime when compiled natively.
@@ -127,10 +131,10 @@ pub fn native_version() -> NativeVersion {
 	}
 }
 
-/// We assume that ~5% of the block weight is consumed by `on_initialize` handlers. This is
+/// We assume that ~10% of the block weight is consumed by `on_initialize` handlers. This is
 /// used to limit the maximal weight of a single extrinsic.
 pub const AVERAGE_ON_INITIALIZE_RATIO: Perbill = Perbill::from_percent(10);
-/// We allow `Normal` extrinsics to fill up the block up to 75%, the rest can be used by
+/// We allow `Normal` extrinsics to fill up the block up to 70%, the rest can be used by
 /// Operational  extrinsics.
 pub const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(70);
 
@@ -270,6 +274,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = weights::frame_system::SubstrateWeight<Runtime>;
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
+	type MaxConsumers = ConstU32<16>;
 }
 
 parameter_types! {
@@ -284,26 +289,20 @@ impl pallet_timestamp::Config for Runtime {
 	type WeightInfo = weights::pallet_timestamp::SubstrateWeight<Runtime>;
 }
 
-parameter_types! {
-	pub const UncleGenerations: u32 = 0;
-}
-
 impl pallet_authorship::Config for Runtime {
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
-	type UncleGenerations = UncleGenerations;
+	type UncleGenerations = ConstU32<0>;
 	type FilterUncle = ();
 	type EventHandler = (CollatorSelection,);
 }
 
 parameter_types! {
 	pub const NativeTokenExistentialDeposit: u128 = 10 * cDOL; // 0.1 DOL
-	pub const MaxLocks: u32 = 50;
-	pub const MaxReserves: u32 = 50;
 }
 
 impl pallet_balances::Config for Runtime {
-	type MaxLocks = MaxLocks;
-	type MaxReserves = MaxReserves;
+	type MaxLocks = ConstU32<50>;
+	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = [u8; 8];
 	type Balance = Balance;
 	type DustRemoval = ();
@@ -316,7 +315,6 @@ impl pallet_balances::Config for Runtime {
 parameter_types! {
 	/// Relay Chain `TransactionByteFee` / 10
 	pub const TransactionByteFee: Balance = mDOL / 100;
-	pub const OperationalFeeMultiplier: u8 = 5;
 }
 
 impl pallet_transaction_payment::Config for Runtime {
@@ -324,7 +322,7 @@ impl pallet_transaction_payment::Config for Runtime {
 	type TransactionByteFee = TransactionByteFee;
 	type WeightToFee = WeightToFee;
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
-	type OperationalFeeMultiplier = OperationalFeeMultiplier;
+	type OperationalFeeMultiplier = ConstU8<5>;
 }
 
 parameter_types! {
@@ -332,7 +330,6 @@ parameter_types! {
 	pub const DepositBase: Balance = deposit(1, 88);
 	// Additional storage item size of 32 bytes.
 	pub const DepositFactor: Balance = deposit(0, 32);
-	pub const MaxSignatories: u16 = 100;
 }
 
 impl pallet_multisig::Config for Runtime {
@@ -341,7 +338,7 @@ impl pallet_multisig::Config for Runtime {
 	type Currency = Balances;
 	type DepositBase = DepositBase;
 	type DepositFactor = DepositFactor;
-	type MaxSignatories = MaxSignatories;
+	type MaxSignatories = ConstU16<100>;
 	type WeightInfo = weights::pallet_multisig::SubstrateWeight<Runtime>;
 }
 
@@ -366,8 +363,6 @@ parameter_types! {
 	pub const EnactmentPeriod: BlockNumber = 5 * MINUTES;
 	pub const CooloffPeriod: BlockNumber = 5 * MINUTES;
 	pub const PreimageByteDeposit: Balance = deposit(0, 1);
-	pub const MaxVotes: u32 = 100;
-	pub const MaxProposals: u32 = 100;
 }
 
 impl pallet_democracy::Config for Runtime {
@@ -403,7 +398,6 @@ impl pallet_democracy::Config for Runtime {
 	// To cancel a proposal before it has been passed, the technical committee must be unanimous or
 	// Root must agree.
 	type CancelProposalOrigin = EnsureOneOf<
-		AccountId,
 		EnsureRoot<AccountId>,
 		pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, TechnicalCollective>,
 	>;
@@ -417,17 +411,15 @@ impl pallet_democracy::Config for Runtime {
 	type Slash = ();
 	type Scheduler = Scheduler;
 	type PalletsOrigin = OriginCaller;
-	type MaxVotes = MaxVotes;
+	type MaxVotes = ConstU32<100>;
 	type WeightInfo = weights::pallet_democracy::SubstrateWeight<Runtime>;
-	type MaxProposals = MaxProposals;
+	type MaxProposals = ConstU32<100>;
 }
 
 parameter_types! {
 	/// The maximum amount of time (in blocks) for council members to vote on motions.
 	/// Motions may end in fewer blocks if enough votes are cast to determine the result.
 	pub const CouncilMotionDuration: BlockNumber = 3 * DAYS;
-	pub const CouncilMaxProposals: u32 = 100;
-	pub const CouncilMaxMembers: u32 = 100;
 }
 
 type CouncilCollective = pallet_collective::Instance1;
@@ -436,14 +428,13 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type Proposal = Call;
 	type Event = Event;
 	type MotionDuration = CouncilMotionDuration;
-	type MaxProposals = CouncilMaxProposals;
-	type MaxMembers = CouncilMaxMembers;
+	type MaxProposals = ConstU32<100>;
+	type MaxMembers = ConstU32<100>;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = weights::pallet_collective::SubstrateWeight<Runtime>;
 }
 
 pub type EnsureRootOrThreeFourthsCouncil = EnsureOneOf<
-	AccountId,
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>,
 >;
@@ -458,14 +449,12 @@ impl pallet_membership::Config<CouncilMembershipInstance> for Runtime {
 	type PrimeOrigin = EnsureRootOrThreeFourthsCouncil;
 	type MembershipInitialized = Council;
 	type MembershipChanged = Council;
-	type MaxMembers = CouncilMaxMembers;
+	type MaxMembers = ConstU32<100>;
 	type WeightInfo = weights::pallet_membership::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
 	pub const TechnicalMotionDuration: BlockNumber = 3 * DAYS;
-	pub const TechnicalMaxProposals: u32 = 100;
-	pub const TechnicalMaxMembers: u32 = 100;
 }
 
 type TechnicalCollective = pallet_collective::Instance2;
@@ -474,8 +463,8 @@ impl pallet_collective::Config<TechnicalCollective> for Runtime {
 	type Proposal = Call;
 	type Event = Event;
 	type MotionDuration = TechnicalMotionDuration;
-	type MaxProposals = TechnicalMaxProposals;
-	type MaxMembers = TechnicalMaxMembers;
+	type MaxProposals = ConstU32<100>;
+	type MaxMembers = ConstU32<100>;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = weights::pallet_collective::SubstrateWeight<Runtime>;
 }
@@ -490,27 +479,25 @@ impl pallet_membership::Config<TechnicalMembershipInstance> for Runtime {
 	type PrimeOrigin = EnsureRootOrThreeFourthsCouncil;
 	type MembershipInitialized = TechnicalCommittee;
 	type MembershipChanged = TechnicalCommittee;
-	type MaxMembers = TechnicalMaxMembers;
+	type MaxMembers = ConstU32<100>;
 	type WeightInfo = weights::pallet_membership::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(1);
-	pub const ProposalBondMinimum: Balance = 50 * DOL;
+	pub const ProposalBondMinimum: Balance = 500 * DOL;
+	pub const ProposalBondMaximum: Balance = 10_000 * DOL;
 	pub const SpendPeriod: BlockNumber = 10 * MINUTES;
 	pub const Burn: Permill = Permill::from_percent(0);
 	pub const TreasuryPalletId: PalletId = PalletId(*b"py/trsry");
-	pub const MaxApprovals: u32 = 100;
 }
 
 type EnsureRootOrThreeFifthsCouncil = EnsureOneOf<
-	AccountId,
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<_3, _5, AccountId, CouncilCollective>,
 >;
 
 type EnsureRootOrMoreThanHalfCouncil = EnsureOneOf<
-	AccountId,
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>,
 >;
@@ -524,10 +511,11 @@ impl pallet_treasury::Config for Runtime {
 	type OnSlash = Treasury;
 	type ProposalBond = ProposalBond;
 	type ProposalBondMinimum = ProposalBondMinimum;
+	type ProposalBondMaximum = ProposalBondMaximum;
 	type SpendPeriod = SpendPeriod;
 	type Burn = Burn;
 	type BurnDestination = ();
-	type MaxApprovals = MaxApprovals;
+	type MaxApprovals = ConstU32<100>;
 	type WeightInfo = weights::pallet_treasury::SubstrateWeight<Runtime>;
 	type SpendFunds = ();
 }
@@ -535,7 +523,7 @@ impl pallet_treasury::Config for Runtime {
 parameter_types! {
 	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) *
 		RuntimeBlockWeights::get().max_block;
-	pub const MaxScheduledPerBlock: u32 = 50;
+	pub const NoPreimagePostponement: Option<u32> = Some(10);
 }
 
 type ScheduleOrigin = EnsureRoot<AccountId>;
@@ -568,9 +556,30 @@ impl pallet_scheduler::Config for Runtime {
 	type Call = Call;
 	type MaximumWeight = MaximumSchedulerWeight;
 	type ScheduleOrigin = ScheduleOrigin;
-	type MaxScheduledPerBlock = MaxScheduledPerBlock;
+	type MaxScheduledPerBlock = ConstU32<50>; // 50 scheduled calls at most in the queue for a single block.
 	type WeightInfo = weights::pallet_scheduler::SubstrateWeight<Runtime>;
 	type OriginPrivilegeCmp = OriginPrivilegeCmp;
+	type PreimageProvider = Preimage;
+	type NoPreimagePostponement = NoPreimagePostponement;
+}
+
+parameter_types! {
+	// Our NORMAL_DISPATCH_RATIO is 70% of the 5MB limit
+	// So anything more than 3.5MB doesn't make sense here
+	pub const PreimageMaxSize: u32 = 3584 * 1024;
+	pub const PreimageBaseDeposit: Balance = 1 * DOL;
+}
+
+impl pallet_preimage::Config for Runtime {
+	type WeightInfo = ();
+	type Event = Event;
+	type Currency = Balances;
+	type ManagerOrigin = EnsureRoot<AccountId>;
+	type MaxSize = PreimageMaxSize;
+	// The sum of the below 2 amounts will get reserved every time someone submits a preimage.
+	// Their sum will be unreserved when the preimage is requested, i.e. when it is going to be used.
+	type BaseDeposit = PreimageBaseDeposit;
+	type ByteDeposit = PreimageByteDeposit;
 }
 
 parameter_types! {
@@ -580,13 +589,13 @@ parameter_types! {
 
 impl cumulus_pallet_parachain_system::Config for Runtime {
 	type Event = Event;
-	type OnValidationData = ();
 	type SelfParaId = parachain_info::Pallet<Runtime>;
 	type DmpMessageHandler = DmpQueue;
 	type ReservedDmpWeight = ReservedDmpWeight;
 	type OutboundXcmpMessageSource = XcmpQueue;
 	type XcmpMessageHandler = XcmpQueue;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
+	type OnSystemEvent = ();
 }
 
 impl parachain_info::Config for Runtime {}
@@ -745,6 +754,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type ChannelInfo = ParachainSystem;
 	type VersionWrapper = PolkadotXcm;
+	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
 }
 
 impl cumulus_pallet_dmp_queue::Config for Runtime {
@@ -757,7 +767,6 @@ parameter_types! {
 	// Rotate collator's spot each 6 hours.
 	pub const Period: u32 = 10 * MINUTES;
 	pub const Offset: u32 = 0;
-	pub const MaxAuthorities: u32 = 100_000;
 }
 
 impl pallet_session::Config for Runtime {
@@ -778,16 +787,12 @@ impl pallet_session::Config for Runtime {
 impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
 	type DisabledValidators = ();
-	type MaxAuthorities = MaxAuthorities;
+	type MaxAuthorities = ConstU32<100_000>;
 }
 
 parameter_types! {
 	// Pallet account for record rewards and give rewards to collator.
 	pub const PotId: PalletId = PalletId(*b"PotStake");
-	// How many collator candidates is allowed.
-	pub const MaxCandidates: u32 = 50;
-	// How many collators who cannot be slashed.
-	pub const MaxInvulnerables: u32 = 5;
 }
 
 parameter_types! {
@@ -796,7 +801,6 @@ parameter_types! {
 
 /// We allow root and the Relay Chain council to execute privileged collator selection operations.
 pub type CollatorSelectionUpdateOrigin = EnsureOneOf<
-	AccountId,
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>,
 >;
@@ -806,16 +810,14 @@ impl manta_collator_selection::Config for Runtime {
 	type Currency = Balances;
 	type UpdateOrigin = CollatorSelectionUpdateOrigin;
 	type PotId = PotId;
-	type MaxCandidates = MaxCandidates;
-	type MaxInvulnerables = MaxInvulnerables;
-	// should be a multiple of session or things will get inconsistent
-	type KickThreshold = Period;
+	type MaxCandidates = ConstU32<50>; // 50 candidates at most
+	type MaxInvulnerables = ConstU32<5>; // 5 invulnerables at most
+	type KickThreshold = Period; // should be a multiple of session or things will get inconsistent
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
 	type ValidatorIdOf = manta_collator_selection::IdentityCollator;
 	type ValidatorRegistration = Session;
 	type WeightInfo = manta_collator_selection::weights::SubstrateWeight<Runtime>;
 }
-
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
@@ -854,6 +856,8 @@ construct_runtime!(
 		// Treasury
 		Treasury: pallet_treasury::{Pallet, Call, Storage, Event<T>} = 26,
 
+		// Preimage registrar.
+		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 28,
 		// System scheduler.
 		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 29,
 
@@ -1022,8 +1026,8 @@ impl_runtime_apis! {
 	}
 
 	impl cumulus_primitives_core::CollectCollationInfo<Block> for Runtime {
-		fn collect_collation_info() -> cumulus_primitives_core::CollationInfo {
-			ParachainSystem::collect_collation_info()
+		fn collect_collation_info(header: &<Block as BlockT>::Header) -> cumulus_primitives_core::CollationInfo {
+			ParachainSystem::collect_collation_info(header)
 		}
 	}
 
@@ -1062,6 +1066,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_collective, Council);
 			list_benchmark!(list, extra, pallet_membership, CouncilMembership);
 			list_benchmark!(list, extra, pallet_treasury, Treasury);
+			list_benchmark!(list, extra, pallet_preimage, Preimage);
 			list_benchmark!(list, extra, pallet_scheduler, Scheduler);
 			list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_tx_pause, TransactionPause);
@@ -1109,6 +1114,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_collective, Council);
 			add_benchmark!(params, batches, pallet_membership, CouncilMembership);
 			add_benchmark!(params, batches, pallet_scheduler, Scheduler);
+			add_benchmark!(params, batches, pallet_preimage, Preimage);
 			add_benchmark!(params, batches, pallet_treasury, Treasury);
 			add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_tx_pause, TransactionPause);
