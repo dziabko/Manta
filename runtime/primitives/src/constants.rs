@@ -30,7 +30,7 @@ pub const DOLPHIN_TOKEN_SYMBOL: &str = "DOL";
 
 /// Manta parachain time-related
 pub mod time {
-	use crate::{BlockNumber, Moment};
+	use crate::types::{BlockNumber, Moment};
 	/// This determines the average expected block time that we are targeting. Blocks will be
 	/// produced at a minimum duration defined by `SLOT_DURATION`. `SLOT_DURATION` is picked up by
 	/// `pallet_timestamp` which is in turn picked up by `pallet_aura` to implement `fn
@@ -45,3 +45,5 @@ pub mod time {
 	pub const HOURS: BlockNumber = MINUTES * 60;
 	pub const DAYS: BlockNumber = HOURS * 24;
 }
+
+pub const ASSET_STRING_LIMIT: u32 = 50;
